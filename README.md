@@ -56,6 +56,6 @@ and commit `models.json`.
 ## Updates
 
 When Sable opens it checks GitHub for a newer version and, if there is one, offers it in a banner (**Update** or
-**Later**; Settings ? Updates turns the check off). Updating replaces the changed code files, updates packages or
+**Later**; Settings → Updates turns the check off). Updating replaces the changed code files, updates packages or
 downloads new models only if those changed, and restarts the app. In a git clone it runs `git pull` instead, and only
 when there are no uncommitted changes. Anything pushed to `main` reaches installed copies this way.
