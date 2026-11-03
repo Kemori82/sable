@@ -1,0 +1,5 @@
+# PyTorch 2.11.0 is installed by install.ps1 (GPU or CPU build), then these:
+transformers==5.22.0
+safetensors==0.8.0
+numpy==2.5.4
+pywebview==6.2.1

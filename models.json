@@ -1,0 +1,244 @@
+{
+ "repo": "Kemori82/writing-studio",
+ "tag": "models-v1",
+ "files": [
+  {
+   "path": "adapters/evo1/adapter.json",
+   "size": 28,
+   "sha256": "332b39ca6b84d0e26bd1b3650018a298ff149110557eba4ef144460d40f6e94b",
+   "asset": "adapters--evo1--adapter.json"
+  },
+  {
+   "path": "adapters/evo1/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "db07ecb92dd3e2969c6cf257e9be74c767825086409c0d1ccdf1990424810df0",
+   "asset": "adapters--evo1--adapter.safetensors"
+  },
+  {
+   "path": "adapters/evo2/adapter.json",
+   "size": 30,
+   "sha256": "fa75273a0444f6e5b9b8f93d7942482a14292755d683533ae201ea501711a39f",
+   "asset": "adapters--evo2--adapter.json"
+  },
+  {
+   "path": "adapters/evo2/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "0081a5fc190981081e6eb10e5f3224992dc6e81c8061959f6b8a11e08fd3c4bc",
+   "asset": "adapters--evo2--adapter.safetensors"
+  },
+  {
+   "path": "adapters/evo3/adapter.json",
+   "size": 30,
+   "sha256": "4b876ecbfc1ea283a611f580897ed5cbc1e9b419d28b7ae402bb6e3d0c1d75eb",
+   "asset": "adapters--evo3--adapter.json"
+  },
+  {
+   "path": "adapters/evo3/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "392882ba1d317abcba32f329f70d49b4eadef7bcf1abe663b088b24d0dd6fd49",
+   "asset": "adapters--evo3--adapter.safetensors"
+  },
+  {
+   "path": "adapters/evo4/adapter.json",
+   "size": 30,
+   "sha256": "f1fb0c04ae4f7c8218875e71c20dd3e5af2cfb2e83b6bc58c8656c55686a39bb",
+   "asset": "adapters--evo4--adapter.json"
+  },
+  {
+   "path": "adapters/evo4/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "578efb62cbc32f0f79f72880dba8233c2fcc17b765b79640e0a10e86a7f3a83c",
+   "asset": "adapters--evo4--adapter.safetensors"
+  },
+  {
+   "path": "adapters/humanizer/adapter.json",
+   "size": 28,
+   "sha256": "21546edad65a28aff8d24142d28ba716c30d23fc0806c84a411b6cc7cae21c87",
+   "asset": "adapters--humanizer--adapter.json"
+  },
+  {
+   "path": "adapters/humanizer/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "710219cd8117bfca5c3025e4186abf850b0d674fc20f643adc8ad59c3642a4d0",
+   "asset": "adapters--humanizer--adapter.safetensors"
+  },
+  {
+   "path": "adapters/r1/adapter.json",
+   "size": 29,
+   "sha256": "5451928264b470baa71a149e201c5c3a8cede31888777aa57f090a84a9d4fcd1",
+   "asset": "adapters--r1--adapter.json"
+  },
+  {
+   "path": "adapters/r1/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "02a920b0b2ad476da8979f4f87b582d01b12320e8d86d09f95f2924d97bb1921",
+   "asset": "adapters--r1--adapter.safetensors"
+  },
+  {
+   "path": "adapters/r2/adapter.json",
+   "size": 28,
+   "sha256": "44068820f28c3f3584dc9a310a5a42bb86c6cec08ccc5cc7aa6fe92ea29a0f5f",
+   "asset": "adapters--r2--adapter.json"
+  },
+  {
+   "path": "adapters/r2/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "0ffb989ba191fc53024f7a7071a70ab3bce25ad47fb6a13df879b69b324fc2cf",
+   "asset": "adapters--r2--adapter.safetensors"
+  },
+  {
+   "path": "adapters/r3/adapter.json",
+   "size": 28,
+   "sha256": "38707b1eb8a91747171c1e694d9b934a0498c8698373c4a250ee075b036ba26b",
+   "asset": "adapters--r3--adapter.json"
+  },
+  {
+   "path": "adapters/r3/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "13309eba2f64d87a5ce70e9e051513f5796eb57059ef92e640fed452973ef198",
+   "asset": "adapters--r3--adapter.safetensors"
+  },
+  {
+   "path": "adapters/rl/adapter.json",
+   "size": 35,
+   "sha256": "42209c62964eb58a66ba015bfbe6d5e8272414f06cb166a33157912e24c7a306",
+   "asset": "adapters--rl--adapter.json"
+  },
+  {
+   "path": "adapters/rl/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "918c981da1e1690ad4a64736f6e5cd7e1233dc36f6ccd0fefc5789db15465e04",
+   "asset": "adapters--rl--adapter.safetensors"
+  },
+  {
+   "path": "adapters/sft/adapter.json",
+   "size": 30,
+   "sha256": "d90cb04616ea63a3d3eb1fc2ab16b5016730e196743bc537edd6963fe8c9dd61",
+   "asset": "adapters--sft--adapter.json"
+  },
+  {
+   "path": "adapters/sft/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "e16c7f5abc828ef4c36c989362fed10de16a074cc9bc8c5ad8ddd5bdee57311c",
+   "asset": "adapters--sft--adapter.safetensors"
+  },
+  {
+   "path": "base-0.5b/config.json",
+   "size": 659,
+   "sha256": "18e18afcaccafade98daf13a54092927904649e1dd4eba8299ab717d5d94ff45",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-0.5B-Instruct",
+    "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "file": "config.json"
+   }
+  },
+  {
+   "path": "base-0.5b/model.safetensors",
+   "size": 988097824,
+   "sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-0.5B-Instruct",
+    "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+    "file": "model.safetensors"
+   }
+  },
+  {
+   "path": "base-1.5b/config.json",
+   "size": 660,
+   "sha256": "98d2ff8cc47488d08a2b0b3acf4eb99ef210779b42bd48605f6b8e36acdbf670",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "file": "config.json"
+   }
+  },
+  {
+   "path": "base-1.5b/generation_config.json",
+   "size": 242,
+   "sha256": "e558847a8b4402616f1273797b015104dc266fe4b520056fca88823ba8f8ebe6",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "file": "generation_config.json"
+   }
+  },
+  {
+   "path": "base-1.5b/model.safetensors",
+   "size": 3087467144,
+   "sha256": "dd924a11b4c220f385b51ffa522daea7c9f3d850e31b162bb5661df483c6d3ee",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "file": "model.safetensors"
+   }
+  },
+  {
+   "path": "base-1.5b/tokenizer.json",
+   "size": 7031645,
+   "sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "file": "tokenizer.json"
+   }
+  },
+  {
+   "path": "base-1.5b/tokenizer_config.json",
+   "size": 7305,
+   "sha256": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
+   "hf": {
+    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "file": "tokenizer_config.json"
+   }
+  },
+  {
+   "path": "calibration_deberta_paper.json",
+   "size": 106995,
+   "sha256": "a12f39c895751f5a9ee3c6d23cf8e519192aa24420944e765acaf81fa443846c",
+   "asset": "calibration_deberta_paper.json"
+  },
+  {
+   "path": "calibration_deberta_paper_bino.json",
+   "size": 234570,
+   "sha256": "345bfd5d680f6feec2122b15e10dbe0f760673daa295aa4ae1b6eae13fbaa6e4",
+   "asset": "calibration_deberta_paper_bino.json"
+  },
+  {
+   "path": "deberta/config.json",
+   "size": 1047,
+   "sha256": "311a6d65cd3310706b4e62d98eaae0b49b6cb512cdb109fdaa24e6c4cfa0cc52",
+   "asset": "deberta--config.json"
+  },
+  {
+   "path": "deberta/model.safetensors",
+   "size": 566665788,
+   "sha256": "f61ab754c317b1a2d105dce903de67a2c437c91b1b842dd7798509f050872645",
+   "asset": "deberta--model.safetensors"
+  },
+  {
+   "path": "deberta/ood.json",
+   "size": 105,
+   "sha256": "bc68f4b544651079b21e07c618c32d49d55f2acfd585b0cf8d51f7c7e687bc18",
+   "asset": "deberta--ood.json"
+  },
+  {
+   "path": "deberta/ood_reference.npy",
+   "size": 30720128,
+   "sha256": "e17a3966cedfd4869a28b488afeaa7614d337b06b8b2ee36b1ed0954474271ef",
+   "asset": "deberta--ood_reference.npy"
+  },
+  {
+   "path": "deberta/tokenizer.json",
+   "size": 8339974,
+   "sha256": "40b244adff13af033491ed93e56c53ecfc9c652cde898ac62c09eebcad940f34",
+   "asset": "deberta--tokenizer.json"
+  },
+  {
+   "path": "deberta/tokenizer_config.json",
+   "size": 562,
+   "sha256": "9e68fa829c3d566a23e830b44bbddabc0386d1602886a9e8277ee13cb723cfd8",
+   "asset": "deberta--tokenizer_config.json"
+  }
+ ]
+}

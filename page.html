@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing Studio</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --fg: #1d1d1f; --muted: #6e6e73; --faint: #a1a1a6;
+    --line: rgba(0,0,0,.08); --accent: #0071e3; --accent-fg: #fff; --accent-soft: rgba(0,113,227,.12);
+    --good: #1a7f37; --good-soft: rgba(26,127,55,.12); --warn: #b25000; --warn-soft: rgba(178,80,0,.14);
+    --bad: #c42b1c; --bad-soft: rgba(196,43,28,.12);
+    --bar: rgba(245,245,247,.72); --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06);
+    --seg-thumb: #ffffff; --seg-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04);
+    --spring: cubic-bezier(.2,.9,.25,1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e; --surface: #2c2c2e; --surface-2: #3a3a3c; --fg: #f5f5f7; --muted: #a1a1a6; --faint: #6e6e73;
+      --line: rgba(255,255,255,.1); --accent: #0a84ff; --accent-soft: rgba(10,132,255,.18);
+      --good: #32d74b; --good-soft: rgba(50,215,75,.16); --warn: #ff9f0a; --warn-soft: rgba(255,159,10,.18);
+      --bad: #ff453a; --bad-soft: rgba(255,69,58,.18);
+      --bar: rgba(28,28,30,.72); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+      --seg-thumb: #636366; --seg-shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+         -webkit-font-smoothing: antialiased; overflow: hidden; }
+  button, input, textarea { font: inherit; color: inherit; }
+
+  header { position: fixed; inset: 0 0 auto 0; z-index: 10; height: 56px; display: flex; align-items: center; gap: 16px;
+           padding: 0 20px; background: var(--bar); backdrop-filter: blur(20px) saturate(180%); }
+  h1 { font: 600 20px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; margin: 0; }
+  .spacer { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 14px;
+          font-size: 13px; color: var(--muted); background: var(--surface-2); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  .pill.ready .dot { background: var(--good); }
+  .pill.busy .dot { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+  .pill.error .dot { background: var(--bad); }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .icon-btn { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--muted);
+              cursor: pointer; display: grid; place-items: center; }
+  .icon-btn:hover { background: var(--surface-2); color: var(--fg); }
+
+  main { position: absolute; inset: 0; overflow: auto; padding: 76px 20px 28px; }
+  .tab { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 820px); gap: 20px; align-items: start; justify-content: center; }
+  @media (max-width: 860px) { .tab { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); }
+  .compose { padding: 18px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  @media (max-width: 860px) { .compose { position: static; } }
+  label.t, .t { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 6px 2px; letter-spacing: .01em; }
+
+  .seg { position: relative; display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; background: var(--surface-2); border-radius: 9px; padding: 2px; }
+  .seg .thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; border-radius: 7px; background: var(--seg-thumb);
+                box-shadow: var(--seg-shadow); transition: transform .35s var(--spring); }
+  .seg button { position: relative; z-index: 1; border: 0; background: none; height: 30px; border-radius: 7px; padding: 0 10px;
+                font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; transition: color .2s; white-space: nowrap; }
+  .seg button[aria-pressed="true"] { color: var(--fg); }
+
+  .field { width: 100%; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 10px 12px;
+           outline: none; resize: none; transition: border-color .15s, box-shadow .15s, background .15s; }
+  .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--surface); }
+  .field::placeholder { color: var(--faint); }
+  textarea.field { min-height: 92px; line-height: 1.45; }
+  .collapse { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .35s var(--spring), opacity .25s; }
+  .collapse > div { overflow: hidden; }
+  .collapse.hidden { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+  .collapse.hidden > div { margin-top: -16px; }
+  .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .slider .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .slider output { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+  .btn { border: 0; border-radius: 10px; height: 40px; padding: 0 16px; cursor: pointer; font-weight: 600;
+         display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .1s ease-out, background .15s, opacity .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .45; cursor: default; transform: none; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); width: 100%; height: 44px; font-size: 15px; }
+  .btn.primary.stop { background: var(--surface-2); color: var(--fg); }
+  .btn.ghost { background: transparent; color: var(--accent); height: 30px; padding: 0 10px; font-size: 13px; font-weight: 500; border-radius: 8px; }
+  .btn.ghost:hover { background: var(--accent-soft); }
+  .hint { font-size: 12px; color: var(--faint); text-align: center; margin-top: -8px; }
+  kbd { font: inherit; padding: 0 4px; border-radius: 4px; background: var(--surface-2); }
+  .row-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .row-label .t { margin-bottom: 0; }
+
+  .results { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  .empty h2 { font: 600 22px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; color: var(--fg); margin: 6px 0; }
+  .empty p { margin: 0 auto 18px; max-width: 46ch; }
+  .examples { display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin: 0 auto; text-align: left; }
+  .ex { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 10px 14px; cursor: pointer; text-align: left; }
+  .ex:hover { border-color: var(--accent); }
+  .ex b { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .result { padding: 18px 20px 12px; animation: enter .45s var(--spring) both; }
+  @keyframes enter { from { opacity: 0; transform: translateY(-8px) scale(.99); } }
+  .meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 10px; flex-wrap: wrap; }
+  .tag { padding: 2px 8px; border-radius: 6px; background: var(--surface-2); font-weight: 600; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15.5px; line-height: 1.65; margin: 0; }
+  .text .opening { color: var(--muted); }
+  .caret { display: inline-block; width: 2px; height: 1.1em; vertical-align: -.18em; margin-left: 1px; background: var(--accent); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .foot { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .foot .count { font-size: 12px; color: var(--muted); margin-right: auto; font-variant-numeric: tabular-nums; }
+  .err { color: var(--bad); font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+  .original { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .original summary { cursor: pointer; font-weight: 600; }
+  .original p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; line-height: 1.55; }
+
+  /* Detector result */
+  .score { display: flex; align-items: center; gap: 22px; padding: 22px; }
+  .ring { width: 132px; height: 132px; flex: none; position: relative; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(135deg); }
+  .ring .track { stroke: var(--surface-2); }
+  .ring .val { transition: stroke-dasharray .8s var(--spring); }
+  .ring .num { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .ring .num b { font: 600 34px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .ring .num small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .band-green { --band: var(--good); --band-soft: var(--good-soft); }
+  .band-orange { --band: var(--warn); --band-soft: var(--warn-soft); }
+  .band-red { --band: var(--bad); --band-soft: var(--bad-soft); }
+  .verdict { display: inline-block; font-weight: 600; font-size: 14px; padding: 4px 12px; border-radius: 8px; color: var(--band); background: var(--band-soft); }
+  .score h3 { margin: 10px 0 4px; font: 600 18px/1.3 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+  .score p { margin: 0; color: var(--muted); font-size: 13px; }
+  .tiles { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .tilebox { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; min-width: 130px; }
+  .tilebox b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .tilebox span { display: block; font-size: 12px; color: var(--muted); }
+  .marked { padding: 18px 20px; }
+  .marked mark { background: var(--warn-soft); color: inherit; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .notes { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+
+  /* Settings */
+  dialog { border: 0; border-radius: 16px; padding: 22px; width: min(480px, calc(100vw - 32px)); background: var(--surface); color: var(--fg); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(0,0,0,.25); }
+  dialog h2 { margin: 0 0 16px; font: 600 20px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+  dialog .group { margin-bottom: 18px; }
+  dialog .desc { font-size: 12px; color: var(--muted); margin: 6px 2px 0; min-height: 2.6em; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Writing Studio</h1>
+  <div class="seg" id="tabs" role="tablist" aria-label="Tool" style="width:330px">
+    <i class="thumb"></i>
+    <button data-v="detect" aria-pressed="true">Detector</button>
+    <button data-v="humanize" aria-pressed="false">Humanizer</button>
+    <button data-v="write" aria-pressed="false">Writer</button>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill busy" id="status"><i class="dot"></i><span>Starting…</span></span>
+  <button class="icon-btn" id="openSettings" title="Settings" aria-label="Settings">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main id="main">
+  <!-- Detector -->
+  <div class="tab" id="tab-detect">
+    <section class="card compose">
+      <div><span class="t">Kind of writing</span>
+        <div class="seg" id="dtype"><i class="thumb"></i>
+          <button data-v="essay" aria-pressed="true">Essay</button><button data-v="abstract" aria-pressed="false">Abstract</button><button data-v="other" aria-pressed="false">Other</button>
+        </div></div>
+      <div><label class="t" for="dtext">Text</label>
+        <textarea class="field" id="dtext" style="min-height:300px" placeholder="Paste text to check (50 words or more)."></textarea></div>
+      <button class="btn primary" id="dgo">Detect</button>
+      <div class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to detect</div>
+    </section>
+    <section class="results" id="dresults" aria-live="polite">
+      <div class="card empty"><h2>Paste some writing</h2><p>See how AI-like it reads, and which parts read most like AI.</p></div>
+    </section>
+  </div>
+
+  <!-- Humanizer -->
+  <div class="tab" id="tab-humanize" hidden>
+    <section class="card compose">
+      <div><span class="t">Kind of writing</span>
+        <div class="seg" id="htype"><i class="thumb"></i>
+          <button data-v="essay" aria-pressed="true">Essay</button><button data-v="abstract" aria-pressed="false">Abstract</button><button data-v="review" aria-pressed="false">Review</button><button data-v="creative" aria-pressed="false">Fiction</button>
+        </div></div>
+      <div><div class="row-label"><label class="t" for="htext">AI text</label><button class="btn ghost" id="sample" type="button">Use an example</button></div>
+        <textarea class="field" id="htext" style="min-height:260px" placeholder="Paste AI-written text. It is rewritten a few sentences at a time, keeping every paragraph."></textarea></div>
+      <div class="slider"><div class="row"><label class="t" for="htemp">Creativity</label><output id="htempOut"></output></div>
+        <input type="range" id="htemp" min="0.5" max="1.2" step="0.05" value="0.8"></div>
+      <button class="btn primary" id="hgo">Humanize</button>
+      <div class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to humanize · <kbd>Esc</kbd> to stop</div>
+    </section>
+    <section class="results" id="hresults" aria-live="polite">
+      <div class="card empty"><h2>Paste some AI text</h2><p>It's rewritten a few sentences at a time so it reads like a person wrote it, keeping the meaning. Press Detect on the result to check it.</p></div>
+    </section>
+  </div>
+
+  <!-- Writer -->
+  <div class="tab" id="tab-write" hidden>
+    <section class="card compose">
+      <div><span class="t">Kind of writing</span>
+        <div class="seg" id="wtype"><i class="thumb"></i>
+          <button data-v="essay" aria-pressed="true">Essay</button><button data-v="review" aria-pressed="false">Review</button><button data-v="creative" aria-pressed="false">Fiction</button>
+        </div></div>
+      <div class="collapse" id="topicWrap"><div><label class="t" for="topic">Topic <span style="font-weight:400">(optional)</span></label>
+        <input class="field" id="topic" placeholder="Should schools ban phones in class?" autocomplete="off"></div></div>
+      <div><label class="t" for="opening">Opening sentence</label>
+        <textarea class="field" id="opening" placeholder="The model continues from right after this sentence."></textarea></div>
+      <div class="sliders">
+        <div class="slider"><div class="row"><label class="t" for="len">Length</label><output id="lenOut"></output></div>
+          <input type="range" id="len" min="128" max="768" step="64" value="640"></div>
+        <div class="slider"><div class="row"><label class="t" for="wtemp">Creativity</label><output id="wtempOut"></output></div>
+          <input type="range" id="wtemp" min="0.5" max="1.2" step="0.05" value="0.9"></div>
+      </div>
+      <button class="btn primary" id="wgo">Write</button>
+      <div class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to write · <kbd>Esc</kbd> to stop</div>
+    </section>
+    <section class="results" id="wresults" aria-live="polite">
+      <div class="card empty"><h2>Give it a first sentence</h2><p>The writer loads the first time you use it, then writes the rest in the voice it learned from real people. Try one of these:</p>
+        <div class="examples" id="examples"></div></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="settings">
+  <h2>Settings</h2>
+  <div class="group"><span class="t">Detector</span>
+    <div class="seg" id="sDetector"><i class="thumb"></i>
+      <button data-v="deberta" aria-pressed="true">DeBERTa + RAID + papers</button><button data-v="mix" aria-pressed="false">80/20 with Binoculars</button></div>
+    <p class="desc" id="dDetector"></p></div>
+  <div class="group"><span class="t">Humanizer</span>
+    <div class="seg" id="sHumanizer"><i class="thumb"></i>
+      <button data-v="humanizer_evo" aria-pressed="true">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button></div>
+    <p class="desc" id="dHumanizer"></p></div>
+  <div class="group"><span class="t">Writer</span>
+    <div class="seg" id="sWriter"><i class="thumb"></i>
+      <button data-v="writer_r3" aria-pressed="true">Round 3</button><button data-v="writer_sft" aria-pressed="false">SFT only</button></div>
+    <p class="desc" id="dWriter"></p></div>
+  <form method="dialog" style="text-align:right"><button class="btn ghost" style="height:36px;font-size:14px">Done</button></form>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const DESC = {
+  deberta: "The default. Trained on RAID and academic papers. Orange from 35% AI-like, red from 70%. Fast, and needs no extra models.",
+  mix: "Adds Binoculars (20%). Same 35% / 70% bands. DeBERTa decides alone when it's at least 80% sure or the two disagree by over 20 points. Loads two more models the first time.",
+  humanizer_evo: "The default. Keeps the meaning best, with clean grammar.",
+  humanizer_rl: "Gets flagged less often, but drifts a little more from the original.",
+  writer_r3: "The default. The most human-sounding writer.",
+  writer_sft: "Trained only on human writing, before any detector training.",
+};
+const LABEL = { humanizer_evo: "Evolved", humanizer_rl: "v2 RL", writer_r3: "Round 3", writer_sft: "SFT only",
+                deberta: "DeBERTa + RAID + papers", mix: "80/20 with Binoculars",
+                essay: "Essay", abstract: "Abstract", review: "Review", creative: "Fiction", other: "Other" };
+const EXAMPLES = [
+  { type: "essay", topic: "Should schools ban phones in class?", opening: "Most students check their phones before the first bell even rings." },
+  { type: "review", opening: "I bought this kettle after my old one finally gave up." },
+  { type: "creative", opening: "The lighthouse had been dark for eleven years when the light came back on." },
+];
+const SAMPLE_AI = "Imagine a security guard who has never seen a burglar. If a thief arrived, the guard would need time to figure out what was happening, and by then damage might be done. Now imagine that the guard had been shown photographs of burglars and told what to watch for. That guard would react at once. This is the basic idea behind a vaccine.\n\nThe immune system has two main layers of defense. The innate layer responds quickly but generally, attacking anything that seems foreign. The adaptive layer is slower but precise, learning to recognize specific invaders. Vaccines train the adaptive layer. When a vaccine is injected, it presents the body with a recognizable piece of a pathogen, called an antigen. Immune cells detect it and treat it as a threat, triggering the production of antibodies tailored to that antigen.\n\nThe result is protection without suffering. A person who receives a vaccine may feel a sore arm or a day of fatigue, but they avoid the dangers of the disease itself. By training the body in advance, vaccines make the real battle much easier to win.";
+
+const store = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+function segmented(el, onChange) {
+  const thumb = el.querySelector(".thumb"), btns = [...el.querySelectorAll("button")];
+  const place = () => {
+    const i = btns.findIndex((b) => b.getAttribute("aria-pressed") === "true");
+    const w = (el.clientWidth - 4) / btns.length;
+    thumb.style.width = w + "px"; thumb.style.transform = `translateX(${i * w}px)`;
+  };
+  const select = (b) => {
+    if (!b || b.getAttribute("aria-pressed") === "true") return;
+    btns.forEach((x) => x.setAttribute("aria-pressed", x === b));
+    place(); onChange?.(b.dataset.v);
+  };
+  btns.forEach((b) => b.addEventListener("pointerdown", () => select(b)));
+  btns.forEach((b) => b.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); select(b); } }));
+  new ResizeObserver(place).observe(el);
+  return { get value() { return btns.find((b) => b.getAttribute("aria-pressed") === "true").dataset.v; },
+           set value(v) { select(btns.find((b) => b.dataset.v === v)); } };
+}
+
+/* Tabs */
+const tabs = segmented($("tabs"), (t) => { for (const k of ["detect", "humanize", "write"]) $("tab-" + k).hidden = k !== t; $("main").scrollTop = 0; });
+
+/* Settings: remembered in this window */
+const settings = {};
+for (const [key, id] of [["detector", "sDetector"], ["humanizer", "sHumanizer"], ["writer", "sWriter"]]) {
+  const desc = $("d" + id.slice(1));
+  settings[key] = segmented($(id), (v) => { store.set("set_" + key, v); desc.textContent = DESC[v]; });
+  settings[key].value = store.get("set_" + key, settings[key].value);
+  desc.textContent = DESC[settings[key].value];
+}
+$("openSettings").onclick = () => $("settings").showModal();
+
+const dtype = segmented($("dtype")), htype = segmented($("htype"));
+const wtype = segmented($("wtype"), (v) => $("topicWrap").classList.toggle("hidden", v !== "essay"));
+const sliderText = () => {
+  $("lenOut").textContent = `~${Math.round($("len").value * 0.75)} words`;
+  $("wtempOut").textContent = Number($("wtemp").value).toFixed(2);
+  $("htempOut").textContent = Number($("htemp").value).toFixed(2);
+};
+$("len").oninput = $("wtemp").oninput = $("htemp").oninput = sliderText; sliderText();
+$("sample").onclick = () => { $("htext").value = SAMPLE_AI; htype.value = "essay"; $("htext").focus(); };
+for (const ex of EXAMPLES) {
+  const b = document.createElement("button");
+  b.className = "ex"; b.innerHTML = "<b></b><span></span>";
+  b.querySelector("b").textContent = LABEL[ex.type] + (ex.topic ? " · " + ex.topic : "");
+  b.querySelector("span").textContent = ex.opening;
+  b.onclick = () => { wtype.value = ex.type; $("topic").value = ex.topic || ""; $("opening").value = ex.opening; write(); };
+  $("examples").append(b);
+}
+
+/* Status pill */
+let busy = false;
+async function poll() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    const pill = $("status"), label = pill.querySelector("span:last-child");
+    const loading = s.generator.startsWith("loading");
+    const state = s.detector === "error" || s.generator === "error" ? "error" : s.detector === "loading" || loading ? "busy" : "ready";
+    pill.className = "pill " + state;
+    label.textContent = s.detector === "loading" ? "Loading detector…"
+      : s.detector === "error" ? "Detector failed to load"
+      : s.generator === "error" ? "Model failed to load"
+      : loading ? `Loading ${s.label}… ${(s.generator.match(/\((.*)\)/) || [, ""])[1]}`
+      : s.model ? `Detector + ${s.label} ready` : "Detector ready";
+    pill.title = s.error || "";
+  } catch {}
+  setTimeout(poll, 1000);
+}
+
+/* Detector */
+let detecting = false;
+async function detect() {
+  const text = $("dtext").value.trim();
+  if (!text) { $("dtext").focus(); return; }
+  if (detecting) return;
+  detecting = true; $("dgo").disabled = true; $("dgo").textContent = "Detecting…";
+  const box = $("dresults");
+  const version = settings.detector.value;
+  box.replaceChildren(Object.assign(document.createElement("div"), { className: "card empty",
+    innerHTML: `<h2>Checking…</h2><p>${version === "mix" ? "Binoculars loads the first time it's used." : ""}</p>` }));
+  try {
+    const r = await fetch("/api/detect", { method: "POST", body: JSON.stringify({ text, type: dtype.value, version }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    showDetection(d);
+  } catch (e) {
+    box.replaceChildren(Object.assign(document.createElement("div"), { className: "card result err", textContent: String(e.message || e).split("\n").filter(Boolean).pop() }));
+  }
+  detecting = false; $("dgo").disabled = false; $("dgo").textContent = "Detect";
+}
+
+function showDetection(d) {
+  const box = $("dresults");
+  box.replaceChildren();
+  if (d.status !== "scored") {
+    box.append(Object.assign(document.createElement("div"), { className: "card empty", innerHTML: "<h2>Can't score this</h2><p></p>" }));
+    box.querySelector("p").textContent = d.notes.join(" ");
+    return;
+  }
+  const pct = Math.min(99, Math.max(1, Math.round(100 * d.score)));
+  const head = { green: "Reads as human", orange: "Unsure", red: "Reads as AI" }[d.band];
+  const sub = { green: "Scores like most human writing.", orange: "Somewhere in between: look at the highlighted parts.",
+                red: "Scores above the level where AI writing is flagged." }[d.band];
+  const R = 56, C = 2 * Math.PI * R, ARC = 0.75 * C;
+  const card = document.createElement("article");
+  card.className = "card result score band-" + d.band;
+  card.innerHTML = `<div class="ring"><svg viewBox="0 0 132 132"><circle class="track" cx="66" cy="66" r="${R}" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${ARC} ${C}"/>
+      <circle class="val" cx="66" cy="66" r="${R}" fill="none" stroke="var(--band)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 ${C}"/></svg>
+      <div class="num"><div><b>${pct}%</b><small>AI-like</small></div></div></div>
+    <div><span class="verdict"></span><h3></h3><p></p><div class="tiles"></div></div>`;
+  card.querySelector(".verdict").textContent = head;
+  card.querySelector("h3").textContent = sub;
+  card.querySelector("p").textContent = `${LABEL[d.version]} · ${LABEL[d.doc_type]} · ${d.word_count} words` + (d.overridden ? " · DeBERTa decided alone" : "");
+  for (const c of d.components) {
+    const t = document.createElement("div"); t.className = "tilebox";
+    t.innerHTML = "<b></b><span></span>";
+    t.querySelector("b").textContent = Math.min(99, Math.max(1, Math.round(100 * c.prob))) + "%";
+    t.querySelector("span").textContent = c.label + " on its own";
+    card.querySelector(".tiles").append(t);
+  }
+  box.append(card);
+  requestAnimationFrame(() => requestAnimationFrame(() => card.querySelector(".val").setAttribute("stroke-dasharray", `${ARC * Math.max(0.01, d.score)} ${C}`)));
+
+  const marked = document.createElement("article");
+  marked.className = "card result marked";
+  const n = d.segments.filter((s) => s.highlight).length;
+  marked.innerHTML = `<div class="meta"><span class="tag"></span></div><p class="text"></p>`;
+  marked.querySelector(".tag").textContent = n ? `${n} of ${d.segments.length} parts highlighted as most AI-like` : "No parts stand out as AI-like";
+  const p = marked.querySelector(".text");
+  let at = 0;
+  for (const s of d.segments) {
+    if (s.start > at) p.append(d.text.slice(at, s.start));
+    const piece = d.text.slice(s.start, s.end);
+    p.append(s.highlight ? Object.assign(document.createElement("mark"), { textContent: piece }) : piece);
+    at = s.end;
+  }
+  p.append(d.text.slice(at));
+  if (d.notes.length) {
+    const ul = document.createElement("ul"); ul.className = "notes";
+    for (const t of d.notes) ul.append(Object.assign(document.createElement("li"), { textContent: t }));
+    marked.append(ul);
+  }
+  box.append(marked);
+}
+
+/* Send text to the detector tab and run it */
+function sendToDetector(text, kind) {
+  $("dtext").value = text;
+  dtype.value = kind === "essay" || kind === "abstract" ? kind : "other";
+  tabs.value = "detect";
+  detect();
+}
+
+/* Humanizer and writer: streamed results */
+function resultCard(box, tags, opening) {
+  box.querySelector(".empty")?.remove();
+  const c = document.createElement("article");
+  c.className = "card result";
+  c.innerHTML = `<div class="meta"></div><p class="text"><span class="opening"></span><span class="body"></span><i class="caret"></i></p>
+    <div class="foot" hidden><span class="count"></span><button class="btn ghost" data-a="detect">Detect</button>
+      <button class="btn ghost" data-a="copy">Copy</button><button class="btn ghost" data-a="again"></button></div>`;
+  for (const t of tags) c.querySelector(".meta").append(Object.assign(document.createElement("span"), { className: "tag", textContent: t }));
+  c.querySelector(".opening").textContent = opening ? opening + " " : "";
+  box.prepend(c);
+  return c;
+}
+const fullText = (c) => (c.querySelector(".opening").textContent + c.querySelector(".body").textContent).trim();
+const countWords = (c) => { c.querySelector(".count").textContent = fullText(c).split(/\s+/).filter(Boolean).length + " words"; };
+
+function setBusy(on) {
+  busy = on;
+  for (const [id, verb] of [["hgo", "Humanize"], ["wgo", "Write"]]) { $(id).textContent = on ? "Stop" : verb; $(id).classList.toggle("stop", on); }
+}
+const stop = () => fetch("/api/stop", { method: "POST" });
+
+async function streamInto(c, url, req, trim) {
+  const body = c.querySelector(".body");
+  setBusy(true);
+  let first = trim;
+  try {
+    const r = await fetch(url, { method: "POST", body: JSON.stringify(req) });
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      let s = dec.decode(value, { stream: true });
+      if (first) { s = s.trimStart(); first = !s; }
+      body.textContent += s; countWords(c);
+    }
+  } catch (e) {
+    c.append(Object.assign(document.createElement("div"), { className: "err", textContent: String(e.message || e).split("\n").filter(Boolean).pop() }));
+  }
+  c.querySelector(".caret")?.remove();
+  c.querySelector(".foot").hidden = false; countWords(c);
+  c.querySelector('[data-a="copy"]').onclick = async (e) => {
+    const b = e.currentTarget; await navigator.clipboard.writeText(fullText(c));
+    b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1400);
+  };
+  setBusy(false);
+}
+
+async function humanize(again) {
+  if (busy) return stop();
+  const req = again || { type: htype.value, model: settings.humanizer.value, text: $("htext").value.trim(), temperature: Number($("htemp").value) };
+  if (!req.text) { $("htext").focus(); return; }
+  const c = resultCard($("hresults"), [LABEL[req.type], LABEL[req.model] + " humanizer"], "");
+  const orig = document.createElement("details");
+  orig.className = "original"; orig.innerHTML = "<summary>Original AI text</summary><p></p>";
+  orig.querySelector("p").textContent = req.text;
+  c.querySelector(".foot").before(orig);
+  c.querySelector('[data-a="again"]').textContent = "Humanize again";
+  c.querySelector('[data-a="again"]').onclick = () => humanize(req);
+  c.querySelector('[data-a="detect"]').onclick = () => sendToDetector(fullText(c), req.type);
+  await streamInto(c, "/api/humanize", req, false);
+}
+
+async function write(again) {
+  if (busy) return stop();
+  const req = again || { type: wtype.value, model: settings.writer.value, opening: $("opening").value.trim(),
+                         topic: wtype.value === "essay" ? $("topic").value.trim() : "",
+                         max_tokens: Number($("len").value), temperature: Number($("wtemp").value) };
+  if (!req.opening) { $("opening").focus(); return; }
+  const c = resultCard($("wresults"), [LABEL[req.type], LABEL[req.model] + " writer"].concat(req.topic ? [req.topic] : []), req.opening);
+  c.querySelector('[data-a="again"]').textContent = "Write another";
+  c.querySelector('[data-a="again"]').onclick = () => write(req);
+  c.querySelector('[data-a="detect"]').onclick = () => sendToDetector(fullText(c), req.type);
+  await streamInto(c, "/api/write", req, true);
+}
+
+$("dgo").onclick = detect;
+$("hgo").onclick = () => humanize();
+$("wgo").onclick = () => write();
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); ({ detect, humanize: () => humanize(), write: () => write() })[tabs.value](); }
+  if (e.key === "Escape" && busy) stop();
+});
+poll();
+</script>
+</body>
+</html>
