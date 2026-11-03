@@ -29,12 +29,19 @@ HUMANIZE = ("Rewrite this passage from a {what} so it reads like a real person w
             "and name. Write only the rewritten passage.\n\n{text}")
 
 
-def write_prompt(domain: str, opening: str, topic: str | None = None) -> str:
+def write_prompt(domain: str, opening: str, topic: str | None = None, instructions: str | None = None) -> str:
+    """The training prompt, plus an optional "What it should say" line (the writer was not trained on one, but the
+    base model follows it). Without an opening sentence it writes the whole text."""
     lines = [DOMAIN_INSTRUCTIONS[domain]]
     if topic:
         lines.append(f"Topic: {topic}")
-    lines.append(f"It begins with this sentence, which is already written:\n{opening}")
-    lines.append("Continue from right after that sentence. Write only the text itself.")
+    if instructions:
+        lines.append(f"What it should say: {instructions}")
+    if opening:
+        lines.append(f"It begins with this sentence, which is already written:\n{opening}")
+        lines.append("Continue from right after that sentence. Write only the text itself.")
+    else:
+        lines.append("Write only the text itself.")
     return "\n\n".join(lines)
 
 

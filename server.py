@@ -24,9 +24,9 @@ from detector import Detector
 
 ROOT = Path(__file__).resolve().parent
 PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
-DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3"}
+DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3", "tries": "8"}
 CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"), "humanizer": ("humanizer_evo", "humanizer_rl"),
-           "writer": ("writer_r3", "writer_sft")}
+           "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1")}
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
 
 
@@ -139,6 +139,7 @@ class Handler(BaseHTTPRequestHandler):
         name = req.get("model") if req.get("model") in ("humanizer_evo", "humanizer_rl") else "humanizer_evo"
         what = generator.WHAT.get(req.get("type") if req.get("type") in HUMANIZE_TYPES else "essay")
         temperature = max(0.1, min(1.5, float(req.get("temperature", 0.8))))
+        tries = int(req.get("tries")) if str(req.get("tries")) in CHOICES["tries"] else int(DEFAULTS["tries"])
         with S.gpu:
             S.stop.clear()
             S.ensure_generator(name)
@@ -150,13 +151,32 @@ class Handler(BaseHTTPRequestHandler):
                     if i or j:
                         self.write_piece("\n\n" if j == 0 else " ")
                     max_new = int(len(S.tok(passage).input_ids) * 1.8) + 32
-                    if not self.stream(generator.HUMANIZE.format(what=what, text=passage), max_new, temperature, strip=True):
+                    prompt = generator.HUMANIZE.format(what=what, text=passage)
+                    if tries == 1:
+                        if not self.stream(prompt, max_new, temperature, strip=True):
+                            return
+                    elif not self.write_piece(self.best_rewrite(prompt, passage, max_new, temperature, tries)):
                         return
+
+    def best_rewrite(self, prompt: str, passage: str, max_new: int, temperature: float, n: int) -> str:
+        """n rewrites of passage in one batch; the one the detector finds least AI-like, among those whose length
+        is 0.7-1.5x the original (a much shorter or longer rewrite has usually dropped or added content)."""
+        chat = S.tok.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True)
+        enc = S.tok([chat] * n, return_tensors="pt").to(S.model.device)
+        out = S.model.generate(**enc, do_sample=True, top_p=1.0, top_k=0, repetition_penalty=1.0, max_new_tokens=max_new,
+                               temperature=temperature, stopping_criteria=StoppingCriteriaList([StopFlag()]))
+        cands = [c for c in (S.tok.decode(o[enc.input_ids.shape[1]:], skip_special_tokens=True).strip() for o in out) if c]
+        if not cands:
+            return ""
+        words = len(passage.split())
+        ok = [c for c in cands if 0.7 <= len(c.split()) / words <= 1.5] or cands
+        return min(zip(S.detector.passage_prob(ok), ok))[1]
 
     def write(self, req):
         opening = (req.get("opening") or "").strip()
-        if not opening:
-            return self.json({"error": "Give it an opening sentence first."}, 400)
+        instructions = (req.get("instructions") or "").strip()[:2000] or None
+        if not opening and not instructions:
+            return self.json({"error": "Give it an opening sentence or say what it should write."}, 400)
         domain = req.get("type") if req.get("type") in WRITE_TYPES else "essay"
         name = req.get("model") if req.get("model") in ("writer_r3", "writer_sft") else "writer_r3"
         topic = (req.get("topic") or "").strip() or None if domain == "essay" else None
@@ -164,7 +184,8 @@ class Handler(BaseHTTPRequestHandler):
             S.stop.clear()
             S.ensure_generator(name)
             self.start_stream()
-            self.stream(generator.write_prompt(domain, opening, topic), max(32, min(1024, int(req.get("max_tokens", 640)))),
+            self.stream(generator.write_prompt(domain, opening, topic, instructions),
+                        max(32, min(1024, int(req.get("max_tokens", 640)))),
                         max(0.1, min(1.5, float(req.get("temperature", 0.9)))))
 
     def start_stream(self):

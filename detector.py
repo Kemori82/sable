@@ -95,6 +95,12 @@ class Detector:
             out = self.model(**enc, output_hidden_states=True)
         return out.logits[:, 0].float().cpu().numpy(), out.hidden_states[-1][:, 0].float()
 
+    def passage_prob(self, texts: list[str]) -> list[float]:
+        """AI-likeness of short passages (one segment each, no minimum length): for choosing between rewrites."""
+        logits, _ = self._deberta([normalize(t) for t in texts])
+        p, deb = self.cal["platt"], self.cal["doc_standardization"][self.cal["models"]["deberta"]]
+        return [1 / (1 + math.exp(-(p["a"] * (lg - deb["mean"]) / deb["std"] + p["b"]))) for lg in logits]
+
     def score(self, raw_text: str, doc_type: str = "other") -> dict:
         """Score, band (green / orange / red), highlighted segments and notes."""
         cal = self.cal

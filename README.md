@@ -28,6 +28,10 @@ The detector shows orange from 35% AI-like (or above 90% of human writing) and r
 parts that read most like AI. A humanizer or writer loads the first time it is used (7-25 s). **Detect** on a
 humanized or written result opens the Detector tab with that text and scores it.
 
+The humanizer checks its own work: it writes 8 rewrites of each passage and keeps the one the detector finds
+least AI-like (Settings → Check with the detector: 8 tries, 4 tries or Off). The writer takes an optional
+**What it should say** box with the points to make; it follows it best together with an opening sentence.
+
 Settings also has eight themes: System, Light, Dark, Sable, Aurora, Midnight, Liquid Glass and Space. Choices are saved in `settings.json`.
 
 ## What is in models/

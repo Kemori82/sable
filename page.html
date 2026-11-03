@@ -392,8 +392,10 @@
         </div></div>
       <div class="collapse" id="topicWrap"><div><label class="t" for="topic">Topic <span style="font-weight:400">(optional)</span></label>
         <input class="field" id="topic" placeholder="Should schools ban phones in class?" autocomplete="off"></div></div>
-      <div><label class="t" for="opening">Opening sentence</label>
-        <textarea class="field" id="opening" placeholder="The model continues from right after this sentence."></textarea></div>
+      <div><label class="t" for="instructions">What it should say <span style="font-weight:400">(optional)</span></label>
+        <textarea class="field" id="instructions" style="min-height:110px" placeholder="The points to make, in order, and anything to include: names, facts, a conclusion. For example: argue phones should be allowed for schoolwork only; mention quick quizzes; students who misuse them lose the privilege for a week."></textarea></div>
+      <div><label class="t" for="opening">Opening sentence <span style="font-weight:400">(recommended)</span></label>
+        <textarea class="field" id="opening" placeholder="The model continues from right after this sentence. It follows instructions much better, and reads as more human, with one."></textarea></div>
       <div class="sliders">
         <div class="slider"><div class="row"><label class="t" for="len">Length</label><output id="lenOut"></output></div>
           <input type="range" id="len" min="128" max="768" step="64" value="640"></div>
@@ -405,7 +407,7 @@
     </section>
     <section class="results" id="wresults" aria-live="polite">
       <div class="card empty"><div class="glyph"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M12.5 6.5l5 5"/></svg></div>
-        <h2>Give it a first sentence</h2><p>The writer loads the first time you use it, then writes the rest in the voice it learned from real people. Try one of these:</p>
+        <h2>Say what to write</h2><p>Give it an opening sentence, say what it should say, or both. The writer loads the first time you use it, then writes in the voice it learned from real people. Try one of these:</p>
         <div class="examples" id="examples"></div></div>
     </section>
   </div>
@@ -427,7 +429,11 @@
   <div class="group"><span class="t">Humanizer</span>
     <div class="seg" id="sHumanizer"><i class="thumb"></i>
       <button data-v="humanizer_evo" aria-pressed="true">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button></div>
-    <p class="desc" id="dHumanizer"></p></div>
+    <p class="desc" id="dHumanizer"></p>
+    <span class="t" style="margin-top:12px">Check with the detector</span>
+    <div class="seg" id="sTries"><i class="thumb"></i>
+      <button data-v="8" aria-pressed="true">8 tries</button><button data-v="4" aria-pressed="false">4 tries</button><button data-v="1" aria-pressed="false">Off</button></div>
+    <p class="desc" id="dTries"></p></div>
   <div class="group"><span class="t">Writer</span>
     <div class="seg" id="sWriter"><i class="thumb"></i>
       <button data-v="writer_r3" aria-pressed="true">Round 3</button><button data-v="writer_sft" aria-pressed="false">SFT only</button></div>
@@ -443,6 +449,9 @@ const DESC = {
   humanizer_rl: "Gets flagged less often, but drifts a little more from the original.",
   writer_r3: "The default. The most human-sounding writer.",
   writer_sft: "Trained only on human writing, before any detector training.",
+  tries_8: "The default. Writes 8 rewrites of each passage and keeps the one the detector finds least AI-like. Slower, but far less likely to be flagged.",
+  tries_4: "Writes 4 rewrites of each passage and keeps the least AI-like. About twice as fast as 8.",
+  tries_1: "One rewrite per passage, shown as it is written. Fastest, but flagged much more often.",
 };
 const LABEL = { humanizer_evo: "Evolved", humanizer_rl: "v2 RL", writer_r3: "Round 3", writer_sft: "SFT only",
                 essay: "Essay", abstract: "Abstract", review: "Review", creative: "Fiction", other: "Other" };
@@ -487,14 +496,14 @@ const tabs = segmented($("tabs"), (t) => {
 $("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_evo", writer: "writer_r3", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_evo", writer: "writer_r3", tries: "8", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
-for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"]]) {
-  const desc = $("d" + id.slice(1));
-  settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = DESC[v]; });
+for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"]]) {
+  const desc = $("d" + id.slice(1)), d = (v) => DESC[key === "tries" ? "tries_" + v : v];
+  settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = d(v); });
   settings[key].value = saved[key];
-  desc.textContent = DESC[settings[key].value];
+  desc.textContent = d(settings[key].value);
 }
 function applyTheme(v, animate) {
   const root = document.documentElement;
@@ -527,7 +536,7 @@ for (const ex of EXAMPLES) {
   b.className = "ex"; b.innerHTML = "<b></b><span></span>";
   b.querySelector("b").textContent = LABEL[ex.type] + (ex.topic ? " · " + ex.topic : "");
   b.querySelector("span").textContent = ex.opening;
-  b.onclick = () => { wtype.value = ex.type; $("topic").value = ex.topic || ""; $("opening").value = ex.opening; write(); };
+  b.onclick = () => { wtype.value = ex.type; $("topic").value = ex.topic || ""; $("opening").value = ex.opening; $("instructions").value = ""; write(); };
   $("examples").append(b);
 }
 
@@ -683,9 +692,10 @@ async function streamInto(c, url, req, trim) {
 
 async function humanize(again) {
   if (busy) return stop();
-  const req = again || { type: htype.value, model: settings.humanizer.value, text: $("htext").value.trim(), temperature: Number($("htemp").value) };
+  const req = again || { type: htype.value, model: settings.humanizer.value, text: $("htext").value.trim(), temperature: Number($("htemp").value), tries: settings.tries.value };
   if (!req.text) { $("htext").focus(); return; }
-  const c = resultCard($("hresults"), [LABEL[req.type], LABEL[req.model] + " humanizer"], "");
+  const c = resultCard($("hresults"), [LABEL[req.type], LABEL[req.model] + " humanizer"]
+    .concat(req.tries > 1 ? [`best of ${req.tries} per passage`] : []), "");
   const orig = document.createElement("details");
   orig.className = "original"; orig.innerHTML = "<summary>Original AI text</summary><p></p>";
   orig.querySelector("p").textContent = req.text;
@@ -699,10 +709,12 @@ async function humanize(again) {
 async function write(again) {
   if (busy) return stop();
   const req = again || { type: wtype.value, model: settings.writer.value, opening: $("opening").value.trim(),
+                         instructions: $("instructions").value.trim(),
                          topic: wtype.value === "essay" ? $("topic").value.trim() : "",
                          max_tokens: Number($("len").value), temperature: Number($("wtemp").value) };
-  if (!req.opening) { $("opening").focus(); return; }
-  const c = resultCard($("wresults"), [LABEL[req.type], LABEL[req.model] + " writer"].concat(req.topic ? [req.topic] : []), req.opening);
+  if (!req.opening && !req.instructions) { $("instructions").focus(); return; }
+  const c = resultCard($("wresults"), [LABEL[req.type], LABEL[req.model] + " writer"].concat(req.topic ? [req.topic] : [])
+    .concat(req.instructions ? ["with instructions"] : []), req.opening);
   c.querySelector('[data-a="again"]').textContent = "Write another";
   c.querySelector('[data-a="again"]').onclick = () => write(req);
   c.querySelector('[data-a="detect"]').onclick = () => sendToDetector(fullText(c), req.type);
