@@ -443,7 +443,7 @@
     </div></div>
   <div class="group"><span class="t">Humanizer</span>
     <div class="seg" id="sHumanizer"><i class="thumb"></i>
-      <button data-v="humanizer_evo" aria-pressed="true">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button></div>
+      <button data-v="humanizer_writer" aria-pressed="true">Writer voice</button><button data-v="humanizer_evo" aria-pressed="false">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button></div>
     <p class="desc" id="dHumanizer"></p>
     <span class="t" style="margin-top:12px">Check with the detector</span>
     <div class="seg" id="sTries"><i class="thumb"></i>
@@ -465,7 +465,8 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const DESC = {
-  humanizer_evo: "The default. Keeps the meaning best, with clean grammar.",
+  humanizer_writer: "The default. Rewrites in the SFT writer's casual voice: by far the least likely to be flagged, but rephrases more loosely.",
+  humanizer_evo: "Keeps the meaning closest, with clean grammar, but is flagged more often.",
   humanizer_rl: "Gets flagged less often, but drifts a little more from the original.",
   writer_r3: "The default. The most human-sounding writer.",
   writer_sft: "Trained only on human writing, before any detector training.",
@@ -473,7 +474,7 @@ const DESC = {
   tries_4: "Writes 4 rewrites of each passage and keeps the least AI-like. About twice as fast as 8.",
   tries_1: "One rewrite per passage, shown as it is written. Fastest, but flagged much more often.",
 };
-const LABEL = { humanizer_evo: "Evolved", humanizer_rl: "v2 RL", writer_r3: "Round 3", writer_sft: "SFT only",
+const LABEL = { humanizer_writer: "Writer-voice", humanizer_evo: "Evolved", humanizer_rl: "v2 RL", writer_r3: "Round 3", writer_sft: "SFT only",
                 essay: "Essay", abstract: "Abstract", review: "Review", creative: "Fiction", other: "Other" };
 const EXAMPLES = [
   { type: "essay", topic: "Should schools ban phones in class?", opening: "Most students check their phones before the first bell even rings." },
@@ -516,7 +517,7 @@ const tabs = segmented($("tabs"), (t) => {
 $("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_evo", writer: "writer_r3", tries: "8", updates: "on", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
 for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"]]) {

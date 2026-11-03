@@ -123,6 +123,18 @@
    "asset": "adapters--sft--adapter.safetensors"
   },
   {
+   "path": "adapters/writer_voice/adapter.json",
+   "size": 29,
+   "sha256": "5451928264b470baa71a149e201c5c3a8cede31888777aa57f090a84a9d4fcd1",
+   "asset": "adapters--writer_voice--adapter.json"
+  },
+  {
+   "path": "adapters/writer_voice/adapter.safetensors",
+   "size": 73911112,
+   "sha256": "bea489b821dc6255c5619b581baa8de20f70c51a01716fba01c90030750be75d",
+   "asset": "adapters--writer_voice--adapter.safetensors"
+  },
+  {
    "path": "base-1.5b/config.json",
    "size": 660,
    "sha256": "98d2ff8cc47488d08a2b0b3acf4eb99ef210779b42bd48605f6b8e36acdbf670",

@@ -21,12 +21,16 @@ runs on the CPU, where detection is fine but writing and humanizing are slow.
 | Tab | Default | Other choice (Settings) |
 |---|---|---|
 | Detector | DeBERTa + RAID + papers | |
-| Humanizer | Evolved (round 4) | v2 RL |
+| Humanizer | Writer voice | Evolved (round 4), v2 RL |
 | Writer | Round 3 | SFT only |
 
 The detector shows orange from 35% AI-like (or above 90% of human writing) and red from 70%, and highlights the
 parts that read most like AI. A humanizer or writer loads the first time it is used (7-25 s). **Detect** on a
 humanized or written result opens the Detector tab with that text and scores it.
+
+The default humanizer, **Writer voice**, was trained from the SFT writer on its own passages, so it rewrites in that
+writer's casual voice: on 24 held-out texts it left none red (Evolved: 21%), with a median of 4.5% AI-like, but
+rephrases more loosely (meaning kept 0.74 vs 0.87). Evolved is still there for when the exact meaning matters most.
 
 The humanizer checks its own work: it writes 8 rewrites of each passage and keeps the one the detector finds
 least AI-like (Settings → Check with the detector: 8 tries, 4 tries or Off). The writer takes an optional

@@ -16,9 +16,10 @@ MODELS = Path(__file__).resolve().parent / "models"
 WRITER_CHAIN = ["sft", "r1", "r2", "r3"]
 HUMANIZER_CHAIN = WRITER_CHAIN + ["humanizer", "rl"]
 CHAINS = {"writer_r3": WRITER_CHAIN, "writer_sft": ["sft"],
+          "humanizer_writer": ["sft", "writer_voice"],  # trained from the SFT writer on its own passages
           "humanizer_evo": HUMANIZER_CHAIN + ["evo1", "evo2", "evo3", "evo4"], "humanizer_rl": HUMANIZER_CHAIN}
-LABELS = {"writer_r3": "Round 3 writer", "writer_sft": "SFT writer", "humanizer_evo": "Evolved humanizer",
-          "humanizer_rl": "v2 RL humanizer"}
+LABELS = {"writer_r3": "Round 3 writer", "writer_sft": "SFT writer", "humanizer_writer": "Writer-voice humanizer",
+          "humanizer_evo": "Evolved humanizer", "humanizer_rl": "v2 RL humanizer"}
 
 # ---- prompts, exactly as in training ----
 DOMAIN_INSTRUCTIONS = {"review": "Write an online product review in your own voice.",

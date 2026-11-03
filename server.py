@@ -2,7 +2,7 @@
 
   GET  /              the page, with the saved settings filled in
   POST /api/detect    {text, type}                                     -> score, band, highlighted segments
-  POST /api/humanize  {text, type, model: humanizer_evo|humanizer_rl}  -> streams the rewrite, passage by passage
+  POST /api/humanize  {text, type, model: humanizer_writer|_evo|_rl, tries} -> streams the rewrite, passage by passage
   POST /api/write     {type, topic, opening, model: writer_r3|writer_sft, max_tokens, temperature} -> streams text
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
@@ -27,11 +27,15 @@ from detector import Detector
 
 ROOT = Path(__file__).resolve().parent
 PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
-DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3", "tries": "8", "updates": "on"}
-CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"), "humanizer": ("humanizer_evo", "humanizer_rl"),
+DEFAULTS = {"theme": "system", "humanizer": "humanizer_writer", "writer": "writer_r3", "tries": "8", "updates": "on"}
+CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"),
+           "humanizer": ("humanizer_writer", "humanizer_evo", "humanizer_rl"),
            "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1"),
            "updates": ("on", "off")}
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
+
+
+SETTINGS_VERSION = 2  # 2: the writer-voice humanizer became the default, so earlier saved humanizer choices are reset once
 
 
 def load_settings() -> dict:
@@ -39,7 +43,15 @@ def load_settings() -> dict:
         saved = json.loads(SETTINGS.read_text())
     except (OSError, ValueError):
         saved = {}
+    if saved.get("v", 1) < SETTINGS_VERSION:
+        saved.pop("humanizer", None)
     return {k: saved[k] if saved.get(k) in CHOICES[k] else v for k, v in DEFAULTS.items()}
+
+
+def save_settings(changes: dict) -> dict:
+    new = {**load_settings(), **{k: v for k, v in changes.items() if v in CHOICES.get(k, ())}}
+    SETTINGS.write_text(json.dumps({**new, "v": SETTINGS_VERSION}))
+    return new
 
 
 class State:
@@ -121,8 +133,7 @@ class Handler(BaseHTTPRequestHandler):
         req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if self.path == "/api/settings":
-                SETTINGS.write_text(json.dumps({**load_settings(), **{k: v for k, v in req.items() if v in CHOICES.get(k, ())}}))
-                return self.json(load_settings())
+                return self.json(save_settings(req))
             if self.path == "/api/detect":
                 return self.detect(req)
             if self.path == "/api/update":
@@ -159,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
         paras = generator.chunks(req.get("text") or "")
         if not paras:
             return self.json({"error": "Paste some text to humanize first."}, 400)
-        name = req.get("model") if req.get("model") in ("humanizer_evo", "humanizer_rl") else "humanizer_evo"
+        name = req.get("model") if req.get("model") in CHOICES["humanizer"] else DEFAULTS["humanizer"]
         what = generator.WHAT.get(req.get("type") if req.get("type") in HUMANIZE_TYPES else "essay")
         temperature = max(0.1, min(1.5, float(req.get("temperature", 0.8))))
         tries = int(req.get("tries")) if str(req.get("tries")) in CHOICES["tries"] else int(DEFAULTS["tries"])
