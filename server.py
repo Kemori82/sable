@@ -6,7 +6,9 @@
   POST /api/write     {type, topic, opening, model: writer_r3|writer_sft, max_tokens, temperature} -> streams text
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
-  POST /api/settings  {theme, humanizer, writer}                       -> saved to settings.json
+  POST /api/settings  {theme, humanizer, writer, tries, updates}       -> saved to settings.json
+  GET  /api/update    is there a newer version on GitHub?              -> {available, files, message, mode, note}
+  POST /api/update    update and restart                               -> streams progress lines, then RESTART
 
 The detector (DeBERTa) loads at start. A writer or humanizer loads only when first used; one is kept at a time.
 """
@@ -20,13 +22,15 @@ import torch
 from transformers import StoppingCriteria, StoppingCriteriaList, TextIteratorStreamer
 
 import generator
+import updater
 from detector import Detector
 
 ROOT = Path(__file__).resolve().parent
 PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
-DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3", "tries": "8"}
+DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3", "tries": "8", "updates": "on"}
 CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"), "humanizer": ("humanizer_evo", "humanizer_rl"),
-           "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1")}
+           "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1"),
+           "updates": ("on", "off")}
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
 
 
@@ -98,6 +102,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/":
             page = PAGE.read_text(encoding="utf-8").replace("/*SETTINGS*/{}", json.dumps(load_settings()))
             self.send(200, page.encode(), "text/html; charset=utf-8")
+        elif self.path == "/api/update":
+            try:
+                self.json(updater.check())
+            except Exception as e:  # offline, GitHub unreachable, no git...
+                self.json({"available": False, "error": str(e)})
         elif self.path == "/api/status":
             self.json({"detector": S.det_status, "generator": S.gen_status, "model": S.name,
                        "label": generator.LABELS.get(S.name or (S.gen_status.split(" ") + [""])[1]),
@@ -116,6 +125,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(load_settings())
             if self.path == "/api/detect":
                 return self.detect(req)
+            if self.path == "/api/update":
+                return self.update()
             if self.path == "/api/humanize":
                 return self.humanize(req)
             if self.path == "/api/write":
@@ -131,6 +142,18 @@ class Handler(BaseHTTPRequestHandler):
         with S.gpu:
             r = S.detector.score(req.get("text") or "", doc_type)
         self.json(r)
+
+    def update(self):
+        S.stop.set()  # finish any writing first, then nothing else runs while files change
+        with S.gpu:
+            self.start_stream()
+            try:
+                updater.apply(lambda line: self.write_piece(line + "\n"))
+            except Exception as e:
+                self.write_piece(f"ERROR {e}\n")
+                return
+            self.write_piece("RESTART\n")
+        threading.Timer(0.5, updater.restart).start()
 
     def humanize(self, req):
         paras = generator.chunks(req.get("text") or "")

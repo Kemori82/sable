@@ -52,3 +52,10 @@ Setup: `Sable.bat` → `install.ps1` → `install_models.py`.
 Put the new files in `models/`, run `python tools/make_manifest.py OWNER/REPO --tag models-v2`, upload every file
 with an `asset` entry in `models.json` to a release with that tag (asset name = path with `/` replaced by `--`),
 and commit `models.json`.
+
+## Updates
+
+When Sable opens it checks GitHub for a newer version and, if there is one, offers it in a banner (**Update** or
+**Later**; Settings ? Updates turns the check off). Updating replaces the changed code files, updates packages or
+downloads new models only if those changed, and restarts the app. In a git clone it runs `git pull` instead, and only
+when there are no uncommitted changes. Anything pushed to `main` reaches installed copies this way.

@@ -268,6 +268,16 @@
   .marked mark { background: var(--mark); color: inherit; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   .notes { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 
+  /* ---- update banner ---- */
+  .update { display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 18px; margin: 0 auto 20px; max-width: 1220px;
+            background: var(--accent-soft); box-shadow: none; animation: enter .59s var(--spring) both; }
+  .update .msg { flex: 1; min-width: 0; font-size: 13.5px; }
+  .update .msg b { display: block; font-weight: 600; }
+  .update .msg span { color: var(--muted); overflow-wrap: anywhere; }
+  .update .btn { height: 34px; flex: none; }
+  .update .btn.primary { width: auto; height: 34px; font-size: 13.5px; }
+  .linkbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 600; }
+
   /* ---- settings: a popover that grows out of the gear and shrinks back into it ---- */
   dialog { position: fixed; inset: 64px 14px auto auto; margin: 0; border: 0; border-radius: 18px; padding: 20px;
            width: min(420px, calc(100vw - 28px)); max-height: calc(100vh - 80px); overflow: auto;
@@ -345,6 +355,11 @@
 </header>
 
 <main id="main">
+  <div class="card update" id="updateBar" hidden>
+    <div class="msg"><b id="updateTitle">An update is available</b><span id="updateText"></span></div>
+    <button class="btn ghost" id="updateLater">Later</button>
+    <button class="btn primary" id="updateGo">Update</button>
+  </div>
   <!-- Detector -->
   <div class="tab" id="tab-detect">
     <section class="card compose">
@@ -438,6 +453,11 @@
     <div class="seg" id="sWriter"><i class="thumb"></i>
       <button data-v="writer_r3" aria-pressed="true">Round 3</button><button data-v="writer_sft" aria-pressed="false">SFT only</button></div>
     <p class="desc" id="dWriter"></p></div>
+  <div class="group"><span class="t">Updates</span>
+    <div class="seg" id="sUpdates"><i class="thumb"></i>
+      <button data-v="on" aria-pressed="true">Check when Sable opens</button><button data-v="off" aria-pressed="false">Don't check</button></div>
+    <p class="desc"><span id="dUpdates">Looks for a newer version on GitHub; nothing changes unless you press Update.</span>
+      <button class="linkbtn" id="checkNow">Check now</button></p></div>
   <div class="group"><span class="t">Detector</span>
     <div class="info"><b>DeBERTa + RAID + papers.</b> Orange from 35% AI-like (or above 90% of human writing), red from 70%.</div></div>
 </dialog>
@@ -496,7 +516,7 @@ const tabs = segmented($("tabs"), (t) => {
 $("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_evo", writer: "writer_r3", tries: "8", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_evo", writer: "writer_r3", tries: "8", updates: "on", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
 for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"]]) {
@@ -728,6 +748,51 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); ({ detect, humanize: () => humanize(), write: () => write() })[tabs.value](); }
   if (e.key === "Escape" && busy) stop();
 });
+/* Updates from GitHub: offered, never forced */
+const updates = segmented($("sUpdates"), (v) => save("updates", v));
+updates.value = saved.updates;
+async function checkUpdate(manual) {
+  if (manual) $("dUpdates").textContent = "Checking…";
+  let u;
+  try { u = await (await fetch("/api/update")).json(); } catch { u = { error: "Sable isn't responding." }; }
+  if (u.available) {
+    $("updateTitle").textContent = "An update is available";
+    $("updateText").textContent = (u.message ? u.message + " · " : "") + `${u.files.length} file${u.files.length === 1 ? "" : "s"} changed`;
+    $("updateGo").disabled = false; $("updateLater").hidden = false;
+    $("updateBar").hidden = false;
+  }
+  if (manual) $("dUpdates").textContent = u.available ? "An update is available: see the top of the window."
+    : u.note || (u.error ? "Couldn't check: " + u.error : "Sable is up to date.");
+}
+$("checkNow").onclick = () => checkUpdate(true);
+$("updateLater").onclick = () => ($("updateBar").hidden = true);
+$("updateGo").onclick = async () => {
+  if (busy && !confirm("Stop what's being written and update?")) return;
+  $("updateGo").disabled = true; $("updateLater").hidden = true;
+  $("updateTitle").textContent = "Updating…"; $("updateText").textContent = "";
+  let last = "";
+  try {
+    const r = await fetch("/api/update", { method: "POST" });
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n"); buf = lines.pop();
+      for (const l of lines) if (l) { last = l; $("updateText").textContent = l.startsWith("ERROR ") ? l.slice(6) : l; }
+    }
+  } catch {}
+  if (last === "RESTART") {
+    $("updateTitle").textContent = "Restarting Sable…"; $("updateText").textContent = "It opens again in a few seconds.";
+    // in a browser tab (python app.py --browser) the page reloads once the new server answers
+    setTimeout(function wait() { fetch("/api/status").then(() => location.reload(), () => setTimeout(wait, 1000)); }, 3000);
+  } else {
+    $("updateTitle").textContent = "The update didn't finish";
+    $("updateGo").disabled = false; $("updateGo").textContent = "Try again"; $("updateLater").hidden = false;
+  }
+};
+if (saved.updates === "on") setTimeout(() => checkUpdate(false), 2500);
 poll();
 </script>
 </body>
