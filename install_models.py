@@ -1,8 +1,9 @@
 """Download every model file listed in models.json into models/, checking each one's SHA-256.
 
 Standard library only, so it runs before anything else is installed. Each file is fetched in 32 MB pieces
-over 8 connections at once, so one slow connection can't hold up the install: a piece that stalls or runs
-below 1 MB/s is dropped and fetched again. Files that are already there and match are skipped, and an
+over 8 connections at once, so one slow connection can't hold up the install: a piece that stalls, or runs
+at under a quarter of the other connections' average, is dropped and fetched again (a line that is slow
+overall is left alone). Files that are already there and match are skipped, and an
 interrupted download resumes from the pieces it already has. Writes models/.complete when everything matches.
 
 Usage:  python install_models.py
@@ -20,7 +21,7 @@ ROOT = Path(__file__).resolve().parent
 MODELS = ROOT / "models"
 PIECE = 32 << 20
 WORKERS = 8
-MIN_SPEED = 1 << 20  # bytes/s; a piece slower than this (after its first 10 s) is retried
+SLOW = 0.25  # a piece at under this fraction of the average per-connection speed (after its first 15 s) is retried
 TRIES = 6
 
 
@@ -41,7 +42,13 @@ def url(entry: dict, manifest: dict) -> str:
 
 class Progress:
     def __init__(self, total: int):
-        self.total, self.done, self.lock, self.last, self.start = total, 0, threading.Lock(), 0.0, time.monotonic()
+        self.total, self.done, self.lock, self.last = total, 0, threading.Lock(), 0.0
+        self.window = [(time.monotonic(), 0)]  # (time, bytes done) over the last few seconds
+
+    def speed(self) -> float:
+        """Bytes/s over the last ~5 s, all connections together."""
+        (t0, d0), (t1, d1) = self.window[0], self.window[-1]
+        return (d1 - d0) / (t1 - t0) if t1 - t0 > 1 else 0.0
 
     def add(self, n: int):
         with self.lock:
@@ -49,8 +56,10 @@ class Progress:
             now = time.monotonic()
             if now - self.last > 0.5 or self.done >= self.total:
                 self.last = now
-                rate = self.done / max(now - self.start, 1e-6)
-                print(f"\r  {self.done / 2**20:7.0f} / {self.total / 2**20:.0f} MB  ({rate / 2**20:5.1f} MB/s)",
+                self.window.append((now, self.done))
+                while now - self.window[0][0] > 5:
+                    self.window.pop(0)
+                print(f"\r  {self.done / 2**20:7.0f} / {self.total / 2**20:.0f} MB  ({self.speed() / 2**20:5.1f} MB/s)  ",
                       end="", flush=True)
 
 
@@ -76,8 +85,8 @@ def fetch_piece(src: str, part: Path, start: int, end: int, progress: Progress, 
                         got += len(chunk)
                         progress.add(len(chunk))
                         elapsed = time.monotonic() - t0
-                        if elapsed > 10 and got / elapsed < MIN_SPEED:
-                            raise OSError("too slow")
+                        if elapsed > 15 and got / elapsed < SLOW * progress.speed() / WORKERS:
+                            raise OSError("much slower than the other connections")
             return
         except OSError:
             progress.add(-got)
