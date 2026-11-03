@@ -1,13 +1,14 @@
 """Backend: serves page.html and the API on 127.0.0.1. Imported by app.py once its loading screen is up.
 
-  POST /api/detect    {text, type, version: deberta|mix}               -> score, band, highlighted segments
+  GET  /              the page, with the saved settings filled in
+  POST /api/detect    {text, type}                                     -> score, band, highlighted segments
   POST /api/humanize  {text, type, model: humanizer_evo|humanizer_rl}  -> streams the rewrite, passage by passage
   POST /api/write     {type, topic, opening, model: writer_r3|writer_sft, max_tokens, temperature} -> streams text
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
+  POST /api/settings  {theme, humanizer, writer}                       -> saved to settings.json
 
 The detector (DeBERTa) loads at start. A writer or humanizer loads only when first used; one is kept at a time.
-The GPU has 8 GB, so the generator and Binoculars (80/20 version) swap rather than sit side by side.
 """
 import json
 import threading
@@ -21,8 +22,20 @@ from transformers import StoppingCriteria, StoppingCriteriaList, TextIteratorStr
 import generator
 from detector import Detector
 
-PAGE = Path(__file__).resolve().parent / "page.html"
+ROOT = Path(__file__).resolve().parent
+PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
+DEFAULTS = {"theme": "system", "humanizer": "humanizer_evo", "writer": "writer_r3"}
+CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"), "humanizer": ("humanizer_evo", "humanizer_rl"),
+           "writer": ("writer_r3", "writer_sft")}
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
+
+
+def load_settings() -> dict:
+    try:
+        saved = json.loads(SETTINGS.read_text())
+    except (OSError, ValueError):
+        saved = {}
+    return {k: saved[k] if saved.get(k) in CHOICES[k] else v for k, v in DEFAULTS.items()}
 
 
 class State:
@@ -49,8 +62,6 @@ class State:
         if self.name == name:
             return
         self.free_generator()
-        if self.detector:
-            self.detector.unload_binoculars()
         self.gen_status = f"loading {name}"
         try:
             self.tok, self.model = generator.load(name, progress=lambda m: setattr(self, "gen_status", f"loading {name} ({m})"))
@@ -85,11 +96,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            page = PAGE.read_text(encoding="utf-8").replace("/*SETTINGS*/{}", json.dumps(load_settings()))
+            self.send(200, page.encode(), "text/html; charset=utf-8")
         elif self.path == "/api/status":
             self.json({"detector": S.det_status, "generator": S.gen_status, "model": S.name,
                        "label": generator.LABELS.get(S.name or (S.gen_status.split(" ") + [""])[1]),
-                       "binoculars": bool(S.detector and S.detector.bino), "error": S.error})
+                       "error": S.error})
         else:
             self.send(404, b"{}")
 
@@ -99,6 +111,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.json({})
         req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
+            if self.path == "/api/settings":
+                SETTINGS.write_text(json.dumps({**load_settings(), **{k: v for k, v in req.items() if v in CHOICES.get(k, ())}}))
+                return self.json(load_settings())
             if self.path == "/api/detect":
                 return self.detect(req)
             if self.path == "/api/humanize":
@@ -112,12 +127,9 @@ class Handler(BaseHTTPRequestHandler):
     def detect(self, req):
         if S.det_status != "ready":
             return self.json({"error": "The detector is still loading." if S.det_status == "loading" else S.error}, 503)
-        version = "mix" if req.get("version") == "mix" else "deberta"
         doc_type = req.get("type") if req.get("type") in ("essay", "abstract") else "other"
         with S.gpu:
-            if version == "mix":
-                S.free_generator()  # no room for both Binoculars and a writer on 8 GB
-            r = S.detector.score(req.get("text") or "", doc_type, version)
+            r = S.detector.score(req.get("text") or "", doc_type)
         self.json(r)
 
     def humanize(self, req):

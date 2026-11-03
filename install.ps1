@@ -1,14 +1,14 @@
-# First-run installer, started by "Writing Studio.bat" when something is missing. Safe to run again.
+# First-run installer, started by "Sable.bat" when something is missing. Safe to run again.
 #   1. uv (a small Python installer, kept in .tools\; nothing is installed system-wide)
 #   2. Python 3.12 and .venv
 #   3. PyTorch (GPU build if there is an NVIDIA card, else CPU) and the other packages
-#   4. The models (about 5 GB), each checked against models.json
+#   4. The models (about 4 GB), each checked against models.json
 #   5. A Desktop shortcut
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"  # Invoke-WebRequest is very slow with its progress bar
 Set-Location $PSScriptRoot
-$Host.UI.RawUI.WindowTitle = "Writing Studio - installing"
-Write-Host "Writing Studio setup`n" -ForegroundColor Cyan
+$Host.UI.RawUI.WindowTitle = "Sable - installing"
+Write-Host "Sable setup`n" -ForegroundColor Cyan
 
 $uv = ".tools\uv.exe"
 if (-not (Test-Path $uv)) {
@@ -40,11 +40,11 @@ Write-Host "[4/5] Downloading models..."
 if ($LASTEXITCODE) { throw "Could not download the models." }
 
 Write-Host "[5/5] Adding a Desktop shortcut"
-$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath("Desktop") + "\Writing Studio.lnk")
+$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath("Desktop") + "\Sable.lnk")
 $lnk.TargetPath = "$PSScriptRoot\.venv\Scripts\pythonw.exe"
 $lnk.Arguments = "`"$PSScriptRoot\app.py`""
 $lnk.WorkingDirectory = $PSScriptRoot
 $lnk.IconLocation = "$PSScriptRoot\app.ico"
 $lnk.Save()
 
-Write-Host "`nDone. Starting Writing Studio..." -ForegroundColor Green
+Write-Host "`nDone. Starting Sable..." -ForegroundColor Green

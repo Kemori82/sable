@@ -1,19 +1,27 @@
 """Download every model file listed in models.json into models/, checking each one's SHA-256.
 
-Standard library only, so it runs before anything else is installed. Files that are already there and match
-are skipped; an interrupted download resumes where it stopped. Writes models/.complete when everything matches.
+Standard library only, so it runs before anything else is installed. Each file is fetched in 32 MB pieces
+over 8 connections at once, so one slow connection can't hold up the install: a piece that stalls or runs
+below 1 MB/s is dropped and fetched again. Files that are already there and match are skipped, and an
+interrupted download resumes from the pieces it already has. Writes models/.complete when everything matches.
 
 Usage:  python install_models.py
 """
 import hashlib
 import json
 import sys
+import threading
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 MODELS = ROOT / "models"
+PIECE = 32 << 20
+WORKERS = 8
+MIN_SPEED = 1 << 20  # bytes/s; a piece slower than this (after its first 10 s) is retried
+TRIES = 6
 
 
 def sha256(path: Path) -> str:
@@ -31,53 +39,111 @@ def url(entry: dict, manifest: dict) -> str:
     return f"https://github.com/{manifest['repo']}/releases/download/{manifest['tag']}/{entry['asset']}"
 
 
-def download(src: str, dst: Path, size: int, label: str):
-    part = dst.with_name(dst.name + ".part")
-    have = part.stat().st_size if part.exists() else 0
-    req = urllib.request.Request(src, headers={"User-Agent": "WritingStudio-installer",
-                                               **({"Range": f"bytes={have}-"} if have else {})})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        if have and r.status != 206:  # server ignored the range: start over
-            have = 0
-        with part.open("ab" if have else "wb") as f:
-            done, last = have, 0.0
-            while chunk := r.read(1 << 20):
-                f.write(chunk)
-                done += len(chunk)
-                if time.monotonic() - last > 0.5 or done == size:
-                    last = time.monotonic()
-                    print(f"\r  {label}: {done / 2**20:7.0f} / {size / 2**20:.0f} MB", end="", flush=True)
-    print()
+class Progress:
+    def __init__(self, total: int):
+        self.total, self.done, self.lock, self.last, self.start = total, 0, threading.Lock(), 0.0, time.monotonic()
+
+    def add(self, n: int):
+        with self.lock:
+            self.done += n
+            now = time.monotonic()
+            if now - self.last > 0.5 or self.done >= self.total:
+                self.last = now
+                rate = self.done / max(now - self.start, 1e-6)
+                print(f"\r  {self.done / 2**20:7.0f} / {self.total / 2**20:.0f} MB  ({rate / 2**20:5.1f} MB/s)",
+                      end="", flush=True)
+
+
+def fetch_piece(src: str, part: Path, start: int, end: int, progress: Progress, whole: bool):
+    """Write bytes [start, end) of src into part at the same offset, retrying slow or failed attempts."""
+    for attempt in range(1, TRIES + 1):
+        got = 0
+        try:
+            headers = {"User-Agent": "Sable-installer"}
+            if not whole:
+                headers["Range"] = f"bytes={start}-{end - 1}"
+            with urllib.request.urlopen(urllib.request.Request(src, headers=headers), timeout=20) as r:
+                if not whole and r.status != 206:
+                    raise OSError(f"server sent status {r.status} instead of a range")
+                t0 = time.monotonic()
+                with part.open("r+b") as f:
+                    f.seek(start)
+                    while got < end - start:
+                        chunk = r.read(min(1 << 20, end - start - got))
+                        if not chunk:
+                            raise OSError("connection closed early")
+                        f.write(chunk)
+                        got += len(chunk)
+                        progress.add(len(chunk))
+                        elapsed = time.monotonic() - t0
+                        if elapsed > 10 and got / elapsed < MIN_SPEED:
+                            raise OSError("too slow")
+            return
+        except OSError:
+            progress.add(-got)
+            if attempt == TRIES:
+                raise
+            time.sleep(attempt)
+
+
+def download(entry: dict, src: str, dst: Path, progress: Progress, pool: ThreadPoolExecutor):
+    size = entry["size"]
+    part, done_file = dst.with_name(dst.name + ".part"), dst.with_name(dst.name + ".part.done")
+    done = set(json.loads(done_file.read_text())) if part.exists() and done_file.exists() else set()
+    if not part.exists() or part.stat().st_size != size:
+        with part.open("wb") as f:
+            f.truncate(size)
+        done = set()
+    starts = list(range(0, size, PIECE)) or [0]
+    progress.add(sum(min(PIECE, size - s) for s in starts if s in done))
+    lock = threading.Lock()
+
+    def one(s):
+        fetch_piece(src, part, s, min(s + PIECE, size), progress, whole=len(starts) == 1)
+        with lock:
+            done.add(s)
+            done_file.write_text(json.dumps(sorted(done)))
+
+    for fut in [pool.submit(one, s) for s in starts if s not in done]:
+        fut.result()
     part.replace(dst)
+    done_file.unlink(missing_ok=True)
 
 
 def main() -> int:
     manifest = json.loads((ROOT / "models.json").read_text())
     files = manifest["files"]
-    total = sum(e["size"] for e in files)
-    print(f"Models: {len(files)} files, {total / 2**30:.1f} GB")
-    for i, e in enumerate(files, 1):
+    todo = []
+    for e in files:
         dst = MODELS / e["path"]
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        label = f"[{i}/{len(files)}] {e['path']}"
-        if dst.exists() and dst.stat().st_size == e["size"] and sha256(dst) == e["sha256"]:
-            print(f"  {label}: already there")
-            continue
-        for attempt in range(1, 4):
+        if not (dst.exists() and dst.stat().st_size == e["size"] and sha256(dst) == e["sha256"]):
+            todo.append(e)
+    have = sum(e["size"] for e in files) - sum(e["size"] for e in todo)
+    print(f"Models: {len(files)} files, {len(files) - len(todo)} already there"
+          + (f", downloading {sum(e['size'] for e in todo) / 2**30:.1f} GB" if todo else ""))
+    progress = Progress(sum(e["size"] for e in todo))
+    failed = []
+    # every file's pieces share one pool of connections, so small files and big files download side by side
+    with ThreadPoolExecutor(WORKERS) as pool, ThreadPoolExecutor(WORKERS) as files_pool:
+        def get(e):
+            dst = MODELS / e["path"]
+            dst.parent.mkdir(parents=True, exist_ok=True)
             try:
-                download(url(e, manifest), dst, e["size"], label)
-                if sha256(dst) == e["sha256"]:
-                    break
-                dst.unlink()
-                print(f"  {label}: checksum did not match, downloading again")
+                download(e, url(e, manifest), dst, progress, pool)
+                if sha256(dst) != e["sha256"]:
+                    dst.unlink()
+                    raise OSError("checksum did not match")
             except OSError as err:
-                print(f"\n  {label}: {err} (attempt {attempt} of 3)")
-                time.sleep(3 * attempt)
-        else:
-            print(f"Could not download {e['path']}. Check the internet connection and run the installer again.")
-            return 1
+                failed.append(f"{e['path']}: {err}")
+
+        list(files_pool.map(get, todo))
+    print()
+    if failed:
+        print("Could not download:\n  " + "\n  ".join(failed))
+        print("Check the internet connection and run the installer again; it keeps what it already has.")
+        return 1
     (MODELS / ".complete").write_text(manifest["tag"])
-    print("All models downloaded and checked.")
+    print(f"All models downloaded and checked ({have / 2**30:.1f} GB were already there).")
     return 0
 
 

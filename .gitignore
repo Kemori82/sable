@@ -2,4 +2,5 @@
 .tools/
 models/
 __pycache__/
+settings.json
 *.part

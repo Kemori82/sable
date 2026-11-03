@@ -1,5 +1,5 @@
 {
- "repo": "Kemori82/writing-studio",
+ "repo": "Kemori82/sable",
  "tag": "models-v1",
  "files": [
   {
@@ -123,26 +123,6 @@
    "asset": "adapters--sft--adapter.safetensors"
   },
   {
-   "path": "base-0.5b/config.json",
-   "size": 659,
-   "sha256": "18e18afcaccafade98daf13a54092927904649e1dd4eba8299ab717d5d94ff45",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-0.5B-Instruct",
-    "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
-    "file": "config.json"
-   }
-  },
-  {
-   "path": "base-0.5b/model.safetensors",
-   "size": 988097824,
-   "sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-0.5B-Instruct",
-    "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
-    "file": "model.safetensors"
-   }
-  },
-  {
    "path": "base-1.5b/config.json",
    "size": 660,
    "sha256": "98d2ff8cc47488d08a2b0b3acf4eb99ef210779b42bd48605f6b8e36acdbf670",
@@ -197,12 +177,6 @@
    "size": 106995,
    "sha256": "a12f39c895751f5a9ee3c6d23cf8e519192aa24420944e765acaf81fa443846c",
    "asset": "calibration_deberta_paper.json"
-  },
-  {
-   "path": "calibration_deberta_paper_bino.json",
-   "size": 234570,
-   "sha256": "345bfd5d680f6feec2122b15e10dbe0f760673daa295aa4ae1b6eae13fbaa6e4",
-   "asset": "calibration_deberta_paper_bino.json"
   },
   {
    "path": "deberta/config.json",

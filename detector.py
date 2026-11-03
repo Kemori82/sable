@@ -1,9 +1,5 @@
-"""AI-likeness of a text, as in the review app (aidetecor/scripts/scorer.py), trimmed to what this app uses.
-
-Two versions share one DeBERTa model and differ in calibration:
-  deberta  DeBERTa + RAID + papers                       (models/calibration_deberta_paper.json)
-  mix      the same + Binoculars, 80/20 with override     (models/calibration_deberta_paper_bino.json)
-Binoculars (two Qwen models) is loaded only when the 80/20 version is used.
+"""AI-likeness of a text, as in the review app (aidetecor/scripts/scorer.py), trimmed to what this app uses:
+the DeBERTa + RAID + papers detector (models/deberta) with its calibration (models/calibration_deberta_paper.json).
 """
 import json
 import math
@@ -13,10 +9,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 MODELS = Path(__file__).resolve().parent / "models"
-CALIBRATIONS = {"deberta": "calibration_deberta_paper.json", "mix": "calibration_deberta_paper_bino.json"}
+CALIBRATION = "calibration_deberta_paper.json"
 UNSURE_PERCENTILE = 90.0  # orange from here: scores higher than 90% of human papers
 
 # ---- text cleaning (build_dataset.normalize): the same cleaning the model was trained on ----
@@ -82,46 +78,15 @@ def segment(text: str) -> list[tuple[int, int]]:
     return out
 
 
-class Binoculars:
-    """Performer log-perplexity / observer-performer cross-perplexity: low = AI-like."""
-
-    def __init__(self, device, max_tokens: int = 512):
-        self.device, self.max_tokens = device, max_tokens
-        self.tok = AutoTokenizer.from_pretrained(MODELS / "base-1.5b")
-        self.tok.padding_side = "right"
-        self.obs = AutoModelForCausalLM.from_pretrained(MODELS / "base-0.5b", dtype=torch.bfloat16).to(device).eval()
-        self.perf = AutoModelForCausalLM.from_pretrained(MODELS / "base-1.5b", dtype=torch.bfloat16).to(device).eval()
-
-    @torch.no_grad()
-    def score(self, text: str) -> float:
-        enc = self.tok([text], return_tensors="pt", truncation=True, max_length=self.max_tokens).to(self.device)
-        lo, lp = self.obs(**enc).logits[0, :-1], self.perf(**enc).logits[0, :-1]
-        vocab = min(lo.shape[-1], lp.shape[-1])  # the two checkpoints pad the vocabulary differently
-        lo, lp = lo[:, :vocab].float(), lp[:, :vocab].float()
-        logp = torch.log_softmax(lp, -1)
-        ppl = -logp.gather(-1, enc.input_ids[0, 1:].unsqueeze(-1)).mean()
-        xppl = -(torch.softmax(lo, -1) * logp).sum(-1).mean()
-        return float(ppl / xppl)
-
-
 class Detector:
     def __init__(self, device: str | None = None):
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-        self.cals = {k: json.loads((MODELS / f).read_text()) for k, f in CALIBRATIONS.items()}
+        self.cal = json.loads((MODELS / CALIBRATION).read_text())
         d = MODELS / "deberta"
         self.tok = AutoTokenizer.from_pretrained(d)
         self.model = AutoModelForSequenceClassification.from_pretrained(d, dtype=torch.float32).to(self.device).eval()
         self.ood_ref = torch.tensor(np.load(d / "ood_reference.npy").astype(np.float32), device=self.device)
         self.ood = json.loads((d / "ood.json").read_text())
-        self.bino = None
-
-    def load_binoculars(self):
-        if self.bino is None:
-            self.bino = Binoculars(self.device)
-
-    def unload_binoculars(self):
-        self.bino = None
-        torch.cuda.empty_cache()
 
     @torch.no_grad()
     def _deberta(self, texts: list[str]):
@@ -130,12 +95,12 @@ class Detector:
             out = self.model(**enc, output_hidden_states=True)
         return out.logits[:, 0].float().cpu().numpy(), out.hidden_states[-1][:, 0].float()
 
-    def score(self, raw_text: str, doc_type: str = "other", version: str = "deberta") -> dict:
-        """Score, band (green / orange / red), highlighted segments, each model on its own, and notes."""
-        cal = self.cals[version]
+    def score(self, raw_text: str, doc_type: str = "other") -> dict:
+        """Score, band (green / orange / red), highlighted segments and notes."""
+        cal = self.cal
         text = normalize(raw_text)
         words = text.split()
-        res = {"version": version, "doc_type": doc_type, "word_count": len(words), "text": text, "notes": []}
+        res = {"doc_type": doc_type, "word_count": len(words), "text": text, "notes": []}
         if len(words) < cal["min_words"]:
             return {**res, "status": "too_short", "notes": [f"Fewer than {cal['min_words']} words: too short to score."]}
         lower = [w.strip(".,;:!?\"'()").lower() for w in words]
@@ -153,46 +118,17 @@ class Detector:
         w = np.array([len(t.split()) for t in seg_texts], float)
         std = lambda v, which, name: (np.asarray(v) - cal[which][name]["mean"]) / cal[which][name]["std"]
         deb = cal["models"]["deberta"]
-        z = {"deberta": float(std((logits * w).sum() / w.sum(), "doc_standardization", deb))}
+        s = float(std((logits * w).sum() / w.sum(), "doc_standardization", deb))
         seg_z = std(logits, "segment_standardization", deb)
-        if "binoculars" in cal["models"]:
-            self.load_binoculars()
-            p = cal["doc_standardization"]["binoculars"]  # sign -1: low Binoculars = AI-like
-            z["binoculars"] = p["sign"] * (self.bino.score(text) - p["mean"]) / p["std"]
 
-        combine = cal.get("combine", {"type": "min"})
-        s = float(sum(wt * z[k] for k, wt in combine["weights"].items())) if combine["type"] == "weighted" else min(z.values())
-        sig = lambda pl, v: 1 / (1 + math.exp(-(pl["a"] * v + pl["b"])))
-        prob = sig(cal["platt"], s)
-        domain = doc_type if doc_type in ("essay", "abstract") else None
-        threshold = cal["review_thresholds"][domain or "default"]
+        prob = 1 / (1 + math.exp(-(cal["platt"]["a"] * s + cal["platt"]["b"])))
+        domain = doc_type if doc_type in ("essay", "abstract") else "essay"
         ref = cal["human_percentile_reference"]
-        pct = float(np.interp(s, ref["scores"][domain or "essay"], ref["grid"]))
-        review = s >= threshold
-        t2 = cal.get("tier2")  # second check: the most AI-like quarter of segments above every human paper
-        if t2 and doc_type in t2["thresholds"]:
-            k = max(1, math.ceil(len(logits) * t2["top_fraction"]))
-            review = review or float(np.sort(logits)[::-1][:k].mean()) >= t2["thresholds"][doc_type]
-        ov, overridden = combine.get("override"), False
-        if ov and ov["model"] in z:  # DeBERTa decides alone when it is sure, or when the two disagree a lot
-            po = sig(ov["platt"], z[ov["model"]])
-            gap = abs(po - sig(ov["other_platt"], z[ov["other"]])) if "max_gap" in ov and ov.get("other") in z else 0.0
-            if po >= ov["prob"] or gap > ov.get("max_gap", 1.0):
-                prob, overridden = po, True
-        bands = cal.get("bands")
-        if bands:
-            review = prob >= bands["review_prob"]
-        band = ("red" if review else "orange" if (bands and prob >= bands["unsure_prob"]) or pct >= UNSURE_PERCENTILE
+        pct = float(np.interp(s, ref["scores"][domain], ref["grid"]))
+        bands = cal["bands"]  # red from 70% AI-like; orange from 35%, or above 90% of human writing
+        band = ("red" if prob >= bands["review_prob"] else "orange" if prob >= bands["unsure_prob"] or pct >= UNSURE_PERCENTILE
                 else "green")
 
-        comps = []
-        cref = cal.get("component_reference")
-        if cref and len(z) > 1:
-            for key, label in (("deberta", "DeBERTa"), ("binoculars", "Binoculars")):
-                m = cref["models"].get(key)
-                if m and key in z and "platt" in m:
-                    comps.append({"key": key, "label": label, "prob": sig(m["platt"], z[key]),
-                                  "human_percentile": float(np.interp(z[key], m["percentile_scores"][domain or "essay"], cref["grid"]))})
         notes = []
         v = cls.mean(dim=0)
         if float(1 - (self.ood_ref @ (v / v.norm())).topk(self.ood["k"]).values.mean()) > self.ood["cutoff"]:
@@ -201,8 +137,7 @@ class Detector:
             notes.append(f"Short text (under {cal['short_text_words']} words): scores are noisier.")
         if CONFUSABLE_CHARS.search(raw_text):
             notes.append("Look-alike characters (e.g. Cyrillic letters) were converted to Latin before scoring.")
-        return {**res, "status": "scored", "score": prob, "band": band, "human_percentile": pct, "overridden": overridden,
-                "unsure_from": bands["unsure_prob"] if bands else None, "review_from": bands["review_prob"] if bands else None,
-                "components": comps, "notes": notes,
+        return {**res, "status": "scored", "score": prob, "band": band, "human_percentile": pct,
+                "unsure_from": bands["unsure_prob"], "review_from": bands["review_prob"], "notes": notes,
                 "segments": [{"start": int(a), "end": int(b), "highlight": bool(v >= cal["segment_highlight_cutoff"])}
                              for (a, b), v in zip(spans, seg_z)]}
