@@ -4,6 +4,8 @@
   POST /api/detect    {text, type}                                     -> score, band, highlighted segments
   POST /api/humanize  {text, type, model: humanizer_writer|_evo|_rl|_chain, tries} -> streams the rewrite, passage by passage
   POST /api/write     {type, topic, opening, model: writer_r3|writer_sft, max_tokens, temperature} -> streams text
+  POST /api/correct   {original, text, type, model}                    -> {text, diff, notes, scores}: meaning put back,
+                      grammar fixed (corrector.py)
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
   POST /api/settings  {theme, humanizer, writer, tries, updates, detector} -> saved to settings.json; detector
@@ -19,9 +21,10 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-import torch
 from transformers import StoppingCriteria, StoppingCriteriaList, TextIteratorStreamer
 
+import corrector
+import devices
 import generator
 import updater
 from detector import Detector
@@ -34,6 +37,7 @@ CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "
            "humanizer": ("humanizer_writer", "humanizer_evo", "humanizer_rl", "humanizer_chain"),
            "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1"),
            "updates": ("on", "off"), "detector": ("on", "off")}
+DEVICE = devices.name()  # shown when hovering over the status pill
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
 
 
@@ -62,6 +66,8 @@ class State:
         self.det_status, self.gen_status, self.error = "loading", "idle", None
         self.tok = self.model = self.name = None
         self.step = None  # "2/3" while the chain humanizer runs
+        self.task = None  # what the corrector is doing, while it runs
+        self.corrector = None  # loaded the first time Correct is used
         self.gpu = threading.Lock()  # one load / generation / detection at a time
         self.stop = threading.Event()
 
@@ -78,9 +84,9 @@ class State:
 
     def unload_detector(self):
         with self.gpu:  # waits for anything using it to finish
-            self.detector = None
+            self.detector = self.corrector = None  # the corrector can't run without the detector, so it goes too
             self.det_status = "off"
-            torch.cuda.empty_cache()
+            devices.empty_cache()
 
     def set_detector(self, on: bool):
         threading.Thread(target=self.load_detector if on else self.unload_detector, daemon=True).start()
@@ -88,7 +94,7 @@ class State:
     def free_generator(self):
         self.model = self.tok = self.name = None
         self.gen_status = "idle"
-        torch.cuda.empty_cache()
+        devices.empty_cache()
 
     def ensure_generator(self, name: str):
         if self.name == name:
@@ -138,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/status":
             self.json({"detector": S.det_status, "generator": S.gen_status, "model": S.name,
                        "label": generator.LABELS.get(S.name or (S.gen_status.split(" ") + [""])[1]),
-                       "step": S.step, "error": S.error})
+                       "step": S.step, "task": S.task, "error": S.error, "device": DEVICE})
         else:
             self.send(404, b"{}")
 
@@ -161,6 +167,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.humanize(req)
             if self.path == "/api/write":
                 return self.write(req)
+            if self.path == "/api/correct":
+                return self.correct(req)
         except Exception:
             return self.json({"error": traceback.format_exc()}, 500)
         self.send(404, b"{}")
@@ -268,18 +276,54 @@ class Handler(BaseHTTPRequestHandler):
         return out
 
     def best_rewrite(self, prompt: str, passage: str, max_new: int, temperature: float, n: int) -> str:
-        """n rewrites of passage in one batch; the one the detector finds least AI-like, among those whose length
-        is 0.7-1.5x the original (a much shorter or longer rewrite has usually dropped or added content)."""
+        """n rewrites of passage in one batch; the one the detector finds least AI-like."""
+        ok = self.rewrites(prompt, passage, max_new, temperature, n)
+        return min(zip(S.detector.passage_prob(ok), ok))[1] if ok else ""
+
+    def rewrites(self, prompt: str, passage: str, max_new: int, temperature: float, n: int) -> list[str]:
+        """n rewrites of passage in one batch, keeping those 0.7-1.5x the passage's length if any are (a much shorter
+        or longer rewrite has usually dropped or added content)."""
         chat = S.tok.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True)
         enc = S.tok([chat] * n, return_tensors="pt").to(S.model.device)
         out = S.model.generate(**enc, do_sample=True, top_p=1.0, top_k=0, repetition_penalty=1.0, max_new_tokens=max_new,
                                temperature=temperature, stopping_criteria=StoppingCriteriaList([StopFlag()]))
         cands = [c for c in (S.tok.decode(o[enc.input_ids.shape[1]:], skip_special_tokens=True).strip() for o in out) if c]
-        if not cands:
-            return ""
-        words = len(passage.split())
-        ok = [c for c in cands if 0.7 <= len(c.split()) / words <= 1.5] or cands
-        return min(zip(S.detector.passage_prob(ok), ok))[1]
+        words = max(1, len(passage.split()))
+        return [c for c in cands if 0.7 <= len(c.split()) / words <= 1.5] or cands
+
+    def correct(self, req):
+        """Puts back meaning the humanized text lost and fixes its grammar (corrector.py), checked by the detector."""
+        original, text = (req.get("original") or "").strip(), (req.get("text") or "").strip()
+        if not original or not text:
+            return self.json({"error": "Nothing to correct."}, 400)
+        name = req.get("model") if req.get("model") in CHOICES["humanizer"] else DEFAULTS["humanizer"]
+        if name == "humanizer_chain":
+            name = generator.CHAIN_STEPS[-1]  # repairs in the chain's last, neatest voice
+        kind = req.get("type") if req.get("type") in HUMANIZE_TYPES else "essay"
+        what, doc_type = generator.WHAT[kind], kind if kind in ("essay", "abstract") else "other"
+
+        def rewrite(passage: str) -> list[str]:
+            if S.stop.is_set():
+                return []
+            return self.rewrites(generator.HUMANIZE.format(what=what, text=passage), passage,
+                                 int(len(S.tok(passage).input_ids) * 1.8) + 32, 0.8, 8)
+
+        with S.gpu:
+            if S.detector is None:
+                return self.json({"error": "Correcting needs the detector. Turn it on in Settings."}, 503)
+            S.stop.clear()
+            try:
+                if S.corrector is None:
+                    S.task = "Loading the corrector…"
+                    S.corrector = corrector.Corrector()
+                S.ensure_generator(name)
+                r = S.corrector.correct(original, text, rewrite, S.detector.passage_prob,
+                                        score_doc=lambda t: S.detector.score(t, doc_type).get("score") or 0.0,
+                                        progress=lambda m: setattr(S, "task", f"Correcting: {m}…"))
+                r["scores"] = [S.detector.score(t, doc_type).get("score") for t in (text, r["text"])]
+            finally:
+                S.task = None
+        self.json(r)
 
     def write(self, req):
         opening = (req.get("opening") or "").strip()

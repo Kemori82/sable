@@ -11,6 +11,8 @@ import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+import devices
+
 MODELS = Path(__file__).resolve().parent / "models"
 CALIBRATION = "calibration_deberta_paper.json"
 UNSURE_PERCENTILE = 90.0  # orange from here: scores higher than 90% of human papers
@@ -80,7 +82,7 @@ def segment(text: str) -> list[tuple[int, int]]:
 
 class Detector:
     def __init__(self, device: str | None = None):
-        self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        self.device = torch.device(device or devices.best())
         self.cal = json.loads((MODELS / CALIBRATION).read_text())
         d = MODELS / "deberta"
         self.tok = AutoTokenizer.from_pretrained(d)
@@ -91,7 +93,7 @@ class Detector:
     @torch.no_grad()
     def _deberta(self, texts: list[str]):
         enc = self.tok(texts, truncation=True, max_length=256, padding=True, return_tensors="pt").to(self.device)
-        with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.device.type == "cuda"):
+        with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.device.type in ("cuda", "xpu")):
             out = self.model(**enc, output_hidden_states=True)
         return out.logits[:, 0].float().cpu().numpy(), out.hidden_states[-1][:, 0].float()
 

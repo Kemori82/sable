@@ -13,6 +13,8 @@ import torch
 from safetensors.torch import load_file
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+import devices
+
 MODELS = Path(__file__).resolve().parent / "models"
 WRITER_CHAIN = ["sft", "r1", "r2", "r3"]
 HUMANIZER_CHAIN = WRITER_CHAIN + ["humanizer", "rl"]
@@ -61,8 +63,8 @@ def chunks(text: str, max_sents: int = 4) -> list[list[str]]:
 
 
 def load(name: str, device: str | None = None, progress=lambda msg: None):
-    """Tokenizer and the merged model `name` (a key of CHAINS) on `device` (the GPU if there is one)."""
-    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    """Tokenizer and the merged model `name` (a key of CHAINS) on `device` (the GPU if there is one: devices.py)."""
+    device = device or devices.best()
     base = MODELS / "base-1.5b"
     tok = AutoTokenizer.from_pretrained(base)
     model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.bfloat16).to(device).eval()

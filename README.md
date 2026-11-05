@@ -9,12 +9,16 @@ you type is sent anywhere.
 2. Double-click **Sable.bat**.
 
 The first run sets everything up by itself: Python 3.12, PyTorch and the other packages (in `.venv` inside the
-folder; nothing is installed system-wide), and the models (about 4 GB), each checked against `models.json`.
+folder; nothing is installed system-wide), and the models (about 4.7 GB), each checked against `models.json`.
 It also adds a Desktop shortcut. If the download is interrupted, run it again and it continues where it stopped.
 After that, **Sable.bat** or the shortcut just starts the app.
 
-Needs Windows 10/11 and about 9 GB of disk space. An NVIDIA GPU with 8 GB is recommended; without one the app
-runs on the CPU, where detection is fine but writing and humanizing are slow.
+Needs Windows 10/11 and about 10 GB of disk space. An NVIDIA GPU with 8 GB is recommended. Intel graphics also
+work (Arc cards, and the Arc graphics built into Core Ultra laptops; not yet tested on real hardware), slower than
+an NVIDIA card: the installer picks the matching PyTorch. Without either, or if the Intel graphics can't be used,
+the app runs on the CPU, where detection is fine but writing and humanizing are slow. Hover over the status pill
+to see what it is running on. (If Sable was installed before Intel support, delete `.venv` and run **Sable.bat**
+again to get the Intel build.)
 
 ## Use
 
@@ -40,6 +44,12 @@ least AI-like (Settings → Check with the detector: 8 tries, 4 tries or Off). T
 check on the Evolved step. On 6 held-out texts it scored lowest of all (median 10% AI-like, Writer voice 14%), but
 three rewrites drift furthest from the original, so check that the points survived. It takes 30-45 s per essay.
 
+**Correct** (under a humanized result) checks the rewrite against the original and fixes it one sentence at a
+time: it takes out sentences the original doesn't support or contradicts, puts each lost point back as one new
+sentence, cuts repeats, and makes small grammar fixes, keeping each change only if it fixes something and doesn't
+make the text more AI-like. The rest is left as written, and the changes are shown marked up. On 6 Chain essays it
+cut meaning problems from 85 to 32 in 8-19 s each. It needs the detector on.
+
 The detector stays loaded while Sable is open (about 1 GB of graphics memory). Settings → Detector → Off unloads it;
 the Detector tab then won't score text and the humanizer makes one try per passage, until it is turned back on.
 
@@ -51,11 +61,14 @@ Settings also has eight themes: System, Light, Dark, Sable, Aurora, Midnight, Li
   merged in at load time (`adapters/`, 71 MB each), which gives bit-for-bit the trained models.
 - `deberta` the DeBERTa + RAID + papers detector; matrix weights stored in bfloat16 (they run in bfloat16 on
   the GPU, so scores are identical), embeddings in float32.
+- `nli` (cross-encoder/nli-deberta-v3-base, Apache-2.0) and `gec` (Unbabel/gec-t5_small, Apache-2.0): the
+  corrector's meaning check and grammar fixer, in bfloat16 (0.5 GB together).
 - `calibration_deberta_paper.json` turns the detector's output into a percentage, with the 35% / 70% bands.
 
 The base model downloads from Hugging Face; the rest from this repo's `models-v1` release.
 
-Code: `app.py` (window), `server.py` (API), `detector.py`, `generator.py`, `page.html`. Icon: `icon.svg` → `app.ico`.
+Code: `app.py` (window), `server.py` (API), `detector.py`, `generator.py`, `corrector.py`, `devices.py` (NVIDIA /
+Intel / CPU), `page.html`. Icon: `icon.svg` → `app.ico`.
 Setup: `Sable.bat` → `install.ps1` → `install_models.py`.
 
 ## Publishing new models

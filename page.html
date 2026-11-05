@@ -230,6 +230,10 @@
   .foot { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
   .foot .count { font-size: 12px; color: var(--muted); margin-right: auto; font-variant-numeric: tabular-nums; }
   .err { color: var(--bad); font-size: 13px; white-space: pre-wrap; margin-top: 8px; }
+  .diff-del { color: var(--bad); background: var(--bad-soft); text-decoration: line-through; border-radius: 3px; }
+  .diff-ins { color: inherit; background: var(--good-soft); text-decoration: none; border-radius: 3px; }
+  .result.clean .diff-del { display: none; }
+  .result.clean .diff-ins { background: none; }
   .original { margin-top: 12px; font-size: 13px; color: var(--muted); }
   .original summary { cursor: pointer; font-weight: 600; }
   .original p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; line-height: 1.55; }
@@ -585,16 +589,17 @@ async function poll() {
     const s = await (await fetch("/api/status")).json();
     const pill = $("status"), label = pill.querySelector("span:last-child");
     const loading = s.generator.startsWith("loading");
-    const state = s.detector === "error" || s.generator === "error" ? "error" : s.detector === "loading" || loading || s.step ? "busy" : "ready";
+    const state = s.detector === "error" || s.generator === "error" ? "error" : s.detector === "loading" || loading || s.step || s.task ? "busy" : "ready";
     pill.className = "pill " + state;
     label.textContent = s.detector === "loading" ? "Loading detector…"
       : s.detector === "error" ? "Detector failed to load"
       : s.generator === "error" ? "Model failed to load"
+      : s.task ? (loading ? `Correcting: loading ${s.label}…` : s.task)
       : s.step ? `Chain step ${s.step}: ${loading ? "loading " : ""}${s.label}…`
       : loading ? `Loading ${s.label}… ${(s.generator.match(/\((.*)\)/) || [, ""])[1]}`
       : s.detector === "off" ? (s.model ? `${s.label} ready · detector off` : "Detector off")
       : s.model ? `Detector + ${s.label} ready` : "Detector ready";
-    pill.title = s.error || label.textContent;
+    pill.title = s.error || `${label.textContent}\nRunning on: ${s.device}`;
   } catch {}
   setTimeout(poll, 1000);
 }
@@ -694,7 +699,11 @@ function resultCard(box, tags, opening) {
   box.prepend(c);
   return c;
 }
-const fullText = (c) => (c.querySelector(".opening").textContent + c.querySelector(".body").textContent).trim();
+const fullText = (c) => {  // without the struck-out words of a corrected card's changes
+  const body = c.querySelector(".body").cloneNode(true);
+  body.querySelectorAll(".diff-del").forEach((e) => e.remove());
+  return (c.querySelector(".opening").textContent + body.textContent).trim();
+};
 const countWords = (c) => { c.querySelector(".count").textContent = fullText(c).split(/\s+/).filter(Boolean).length + " words"; };
 
 function setBusy(on) {
@@ -745,6 +754,54 @@ async function humanize(again) {
   c.querySelector('[data-a="again"]').onclick = () => humanize(req);
   c.querySelector('[data-a="detect"]').onclick = () => sendToDetector(fullText(c), req.type);
   await streamInto(c, "/api/humanize", req, false);
+  if (fullText(c)) {
+    const fix = Object.assign(document.createElement("button"), { className: "btn ghost", textContent: "Correct",
+      title: "Put back meaning the rewrite lost and fix its grammar, checked by the detector" });
+    fix.onclick = () => correct(c, req, fix);
+    c.querySelector('[data-a="again"]').before(fix);
+  }
+}
+
+/* Corrector: the humanized text and the original in, meaning put back and grammar fixed, shown as changes */
+const pct = (x) => (x == null ? "?" : Math.round(x * 100) + "%");
+async function correct(c, req, btn) {
+  if (busy) return;
+  setBusy(true); btn.disabled = true; btn.textContent = "Correcting…";
+  c.querySelector(".err")?.remove();
+  try {
+    const r = await fetch("/api/correct", { method: "POST",
+      body: JSON.stringify({ original: req.text, text: fullText(c), type: req.type, model: req.model }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    const n = d.notes, tags = ["Corrected", `AI-like ${pct(d.scores[0])} → ${pct(d.scores[1])}`];
+    if (n.restored > 0) tags.push(`${n.restored} point${n.restored === 1 ? "" : "s"} put back`);
+    if (n.removed > 0) tags.push(`${n.removed} wrong or made-up sentence${n.removed === 1 ? "" : "s"} fixed`);
+    if (n.grammar) tags.push(`${n.grammar} grammar fix${n.grammar === 1 ? "" : "es"}`);
+    if (n.repeats_cut > 0) tags.push(`${n.repeats_cut} repeated words cut`);
+    if (n.undone) tags.push(`${n.undone} change${n.undone === 1 ? "" : "s"} undone: too AI-like`);
+    const k = resultCard($("hresults"), tags, "");
+    const body = k.querySelector(".body");
+    for (const part of d.diff) {
+      if (part.op === "eq") { body.append(part.text); continue; }
+      // a deleted paragraph break would still show as a break: struck-out text ends with a plain space
+      body.append(Object.assign(document.createElement(part.op === "ins" ? "ins" : "del"),
+        { className: "diff-" + part.op, textContent: part.op === "del" ? part.text.replace(/\s+$/, " ") : part.text }));
+    }
+    k.querySelector(".caret")?.remove();
+    k.querySelector(".foot").hidden = false; countWords(k);
+    const toggle = k.querySelector('[data-a="again"]');
+    toggle.textContent = "Hide changes";
+    toggle.onclick = () => { toggle.textContent = k.classList.toggle("clean") ? "Show changes" : "Hide changes"; };
+    k.querySelector('[data-a="detect"]').onclick = () => sendToDetector(fullText(k), req.type);
+    k.querySelector('[data-a="copy"]').onclick = async (e) => {
+      const b = e.currentTarget; await navigator.clipboard.writeText(fullText(k));
+      b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1400);
+    };
+  } catch (e) {
+    c.append(Object.assign(document.createElement("div"), { className: "err", textContent: String(e.message || e).split("\n").filter(Boolean).pop() }));
+  }
+  btn.disabled = false; btn.textContent = "Correct";
+  setBusy(false);
 }
 
 async function write(again) {

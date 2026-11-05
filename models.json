@@ -225,6 +225,60 @@
    "size": 562,
    "sha256": "9e68fa829c3d566a23e830b44bbddabc0386d1602886a9e8277ee13cb723cfd8",
    "asset": "deberta--tokenizer_config.json"
+  },
+  {
+   "path": "gec/config.json",
+   "size": 1652,
+   "sha256": "139abcc83ddb86a3cdfd6a4b855e00b9f655d26ab64b51d8980bf091536eedc3",
+   "asset": "gec--config.json"
+  },
+  {
+   "path": "gec/generation_config.json",
+   "size": 171,
+   "sha256": "50d9dd03ee7c5563283dff0babbbb6a58da6a7d344c1ff49cc3cf350e033367e",
+   "asset": "gec--generation_config.json"
+  },
+  {
+   "path": "gec/model.safetensors",
+   "size": 121028656,
+   "sha256": "40726c75a767312d218d46beef784981e020d9fccf84450515a884564e3a6ef9",
+   "asset": "gec--model.safetensors"
+  },
+  {
+   "path": "gec/tokenizer.json",
+   "size": 2422434,
+   "sha256": "5a1e6d0393c72d2c17483eddef327a7090c9a51989f8f2ebc52d5322dcbcacac",
+   "asset": "gec--tokenizer.json"
+  },
+  {
+   "path": "gec/tokenizer_config.json",
+   "size": 2667,
+   "sha256": "fdd97fb0692db7984af52fb70629f5dd09967f3176d41c8aa43255a3f5fc2fc4",
+   "asset": "gec--tokenizer_config.json"
+  },
+  {
+   "path": "nli/config.json",
+   "size": 1144,
+   "sha256": "b017bef6f6e3135f336e1df6dcd3647dbbdb6f5a5bf6360f2881c62e12416099",
+   "asset": "nli--config.json"
+  },
+  {
+   "path": "nli/model.safetensors",
+   "size": 368873646,
+   "sha256": "6d6e33241d08686c38be4fb949f2b1c7ff5212a8430bef5e3d3a0f01c2b6ecfc",
+   "asset": "nli--model.safetensors"
+  },
+  {
+   "path": "nli/tokenizer.json",
+   "size": 8339875,
+   "sha256": "2c070ff353c36f85e20919da787a30e1e8e52b626d0e026e044f373378f6d0bf",
+   "asset": "nli--tokenizer.json"
+  },
+  {
+   "path": "nli/tokenizer_config.json",
+   "size": 526,
+   "sha256": "5a3d92a7fca377651626bd8c0d48f194d0cb1625cf6c88bac3d0b1072d92cf2a",
+   "asset": "nli--tokenizer_config.json"
   }
  ]
 }

@@ -1,7 +1,7 @@
 # First-run installer, started by "Sable.bat" when something is missing. Safe to run again.
 #   1. uv (a small Python installer, kept in .tools\; nothing is installed system-wide)
 #   2. Python 3.12 and .venv
-#   3. PyTorch (GPU build if there is an NVIDIA card, else CPU) and the other packages
+#   3. PyTorch (NVIDIA build if there is an NVIDIA card, Intel build for Intel graphics, else CPU) and the rest
 #   4. The models (about 4 GB), each checked against models.json
 #   5. A Desktop shortcut
 $ErrorActionPreference = "Stop"
@@ -28,8 +28,14 @@ if (-not (Test-Path $py)) {
 } else { Write-Host "[2/5] Python already there" }
 
 $gpu = [bool](Get-Command nvidia-smi -ErrorAction SilentlyContinue)
-Write-Host ("[3/5] Installing packages (PyTorch for " + $(if ($gpu) { "NVIDIA GPU" } else { "CPU - no NVIDIA GPU found, writing will be slow" }) + ")...")
+# Intel Arc cards and Core Ultra's built-in Arc graphics; older Intel graphics get the same build, and Sable falls
+# back to the CPU if it can't use them (devices.py)
+$intel = -not $gpu -and [bool](Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match "Intel" -and $_.Name -match "Arc|Graphics" })
+Write-Host ("[3/5] Installing packages (PyTorch for " + $(if ($gpu) { "NVIDIA GPU" } elseif ($intel) { "Intel GPU" }
+    else { "CPU - no NVIDIA or Intel GPU found, writing will be slow" }) + ")...")
 if ($gpu) { & $uv pip install --python $py "torch==2.11.0+cu128" --index-url https://download.pytorch.org/whl/cu128 }
+elseif ($intel) { & $uv pip install --python $py "torch==2.11.0+xpu" --index-url https://download.pytorch.org/whl/xpu }
 else { & $uv pip install --python $py "torch==2.11.0" --index-url https://download.pytorch.org/whl/cpu }
 if ($LASTEXITCODE) { throw "Could not install PyTorch." }
 & $uv pip install --python $py -r requirements.txt
