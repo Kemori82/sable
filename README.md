@@ -20,12 +20,12 @@ runs on the CPU, where detection is fine but writing and humanizing are slow.
 
 | Tab | Default | Other choice (Settings) |
 |---|---|---|
-| Detector | DeBERTa + RAID + papers | |
-| Humanizer | Writer voice | Evolved (round 4), v2 RL |
+| Detector | DeBERTa + RAID + papers | Off (frees its graphics memory) |
+| Humanizer | Writer voice | Evolved (round 4), v2 RL, Chain |
 | Writer | Round 3 | SFT only |
 
 The detector shows orange from 35% AI-like (or above 90% of human writing) and red from 70%, and highlights the
-parts that read most like AI. A humanizer or writer loads the first time it is used (7-25 s). **Detect** on a
+parts that read most like AI. A humanizer or writer loads the first time it is used (3-7 s). **Detect** on a
 humanized or written result opens the Detector tab with that text and scores it.
 
 The default humanizer, **Writer voice**, was trained from the SFT writer on its own passages, so it rewrites in that
@@ -35,6 +35,13 @@ rephrases more loosely (meaning kept 0.74 vs 0.87). Evolved is still there for w
 The humanizer checks its own work: it writes 8 rewrites of each passage and keeps the one the detector finds
 least AI-like (Settings → Check with the detector: 8 tries, 4 tries or Off). The writer takes an optional
 **What it should say** box with the points to make; it follows it best together with an opening sentence.
+
+**Chain** rewrites each passage with v2 RL, then Writer voice, then Evolved for neat wording, with the detector
+check on the Evolved step. On 6 held-out texts it scored lowest of all (median 10% AI-like, Writer voice 14%), but
+three rewrites drift furthest from the original, so check that the points survived. It takes 30-45 s per essay.
+
+The detector stays loaded while Sable is open (about 1 GB of graphics memory). Settings → Detector → Off unloads it;
+the Detector tab then won't score text and the humanizer makes one try per passage, until it is turned back on.
 
 Settings also has eight themes: System, Light, Dark, Sable, Aurora, Midnight, Liquid Glass and Space. Choices are saved in `settings.json`.
 

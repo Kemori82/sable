@@ -167,7 +167,7 @@
 
   /* ---- segmented control: the thumb springs from wherever it is, so a quick second tap redirects it ---- */
   .seg { position: relative; display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; background: var(--surface-2); border-radius: 10px; padding: 2px; }
-  .seg .thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; border-radius: 8px; background: var(--seg-thumb);
+  .seg.off { opacity: .45; transition: opacity .2s; }  .seg .thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; border-radius: 8px; background: var(--seg-thumb);
                 box-shadow: var(--seg-shadow); transition: transform .44s var(--spring), width .44s var(--spring); }
   .seg button { position: relative; z-index: 1; border: 0; background: none; height: 30px; border-radius: 8px; padding: 0 12px;
                 font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; transition: color .2s; white-space: nowrap; }
@@ -443,7 +443,7 @@
     </div></div>
   <div class="group"><span class="t">Humanizer</span>
     <div class="seg" id="sHumanizer"><i class="thumb"></i>
-      <button data-v="humanizer_writer" aria-pressed="true">Writer voice</button><button data-v="humanizer_evo" aria-pressed="false">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button></div>
+      <button data-v="humanizer_writer" aria-pressed="true">Writer voice</button><button data-v="humanizer_evo" aria-pressed="false">Evolved</button><button data-v="humanizer_rl" aria-pressed="false">v2 RL</button><button data-v="humanizer_chain" aria-pressed="false">Chain</button></div>
     <p class="desc" id="dHumanizer"></p>
     <span class="t" style="margin-top:12px">Check with the detector</span>
     <div class="seg" id="sTries"><i class="thumb"></i>
@@ -459,7 +459,10 @@
     <p class="desc"><span id="dUpdates">Looks for a newer version on GitHub; nothing changes unless you press Update.</span>
       <button class="linkbtn" id="checkNow">Check now</button></p></div>
   <div class="group"><span class="t">Detector</span>
-    <div class="info"><b>DeBERTa + RAID + papers.</b> Orange from 35% AI-like (or above 90% of human writing), red from 70%.</div></div>
+    <div class="seg" id="sDetector"><i class="thumb"></i>
+      <button data-v="on" aria-pressed="true">On</button><button data-v="off" aria-pressed="false">Off</button></div>
+    <p class="desc" id="dDetector"></p>
+    <div class="info" style="margin-top:10px"><b>DeBERTa + RAID + papers.</b> Orange from 35% AI-like (or above 90% of human writing), red from 70%.</div></div>
 </dialog>
 
 <script>
@@ -468,13 +471,14 @@ const DESC = {
   humanizer_writer: "The default. Rewrites in the SFT writer's casual voice: by far the least likely to be flagged, but rephrases more loosely.",
   humanizer_evo: "Keeps the meaning closest, with clean grammar, but is flagged more often.",
   humanizer_rl: "Gets flagged less often, but drifts a little more from the original.",
+  humanizer_chain: "Rewrites each passage three times in a row: v2 RL, then Writer voice, then Evolved for clean, neat wording. The detector check below runs on the Evolved step. Slowest, and drifts furthest from the original.",
   writer_r3: "The default. The most human-sounding writer.",
   writer_sft: "Trained only on human writing, before any detector training.",
   tries_8: "The default. Writes 8 rewrites of each passage and keeps the one the detector finds least AI-like. Slower, but far less likely to be flagged.",
   tries_4: "Writes 4 rewrites of each passage and keeps the least AI-like. About twice as fast as 8.",
   tries_1: "One rewrite per passage, shown as it is written. Fastest, but flagged much more often.",
 };
-const LABEL = { humanizer_writer: "Writer-voice", humanizer_evo: "Evolved", humanizer_rl: "v2 RL", writer_r3: "Round 3", writer_sft: "SFT only",
+const LABEL = { humanizer_writer: "Writer-voice", humanizer_evo: "Evolved", humanizer_rl: "v2 RL", humanizer_chain: "Chain",writer_r3: "Round 3", writer_sft: "SFT only",
                 essay: "Essay", abstract: "Abstract", review: "Review", creative: "Fiction", other: "Other" };
 const EXAMPLES = [
   { type: "essay", topic: "Should schools ban phones in class?", opening: "Most students check their phones before the first bell even rings." },
@@ -517,15 +521,27 @@ const tabs = segmented($("tabs"), (t) => {
 $("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
 for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"]]) {
   const desc = $("d" + id.slice(1)), d = (v) => DESC[key === "tries" ? "tries_" + v : v];
-  settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = d(v); });
+  settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = d(v); detectorDesc(); });
   settings[key].value = saved[key];
   desc.textContent = d(settings[key].value);
 }
+/* The detector can be unloaded to free graphics memory; without it there's nothing to pick the best try with */
+const detectorSeg = segmented($("sDetector"), (v) => { save("detector", v); detectorDesc(); });
+detectorSeg.value = saved.detector;
+function detectorDesc() {
+  const on = saved.detector !== "off";
+  $("dDetector").textContent = on
+    ? "Kept loaded while Sable is open. Turn it off to free its graphics memory for the writers and humanizers."
+    : "Off, and its graphics memory is free. The Detector tab won't score text, and the humanizer makes one try per passage.";
+  $("dTries").textContent = on ? DESC["tries_" + settings.tries.value] : "The detector is off, so each passage gets one try.";
+  $("sTries").classList.toggle("off", !on);
+}
+detectorDesc();
 function applyTheme(v, animate) {
   const root = document.documentElement;
   if (animate) { root.classList.add("theme-change"); setTimeout(() => root.classList.remove("theme-change"), 350); }
@@ -568,12 +584,14 @@ async function poll() {
     const s = await (await fetch("/api/status")).json();
     const pill = $("status"), label = pill.querySelector("span:last-child");
     const loading = s.generator.startsWith("loading");
-    const state = s.detector === "error" || s.generator === "error" ? "error" : s.detector === "loading" || loading ? "busy" : "ready";
+    const state = s.detector === "error" || s.generator === "error" ? "error" : s.detector === "loading" || loading || s.step ? "busy" : "ready";
     pill.className = "pill " + state;
     label.textContent = s.detector === "loading" ? "Loading detector…"
       : s.detector === "error" ? "Detector failed to load"
       : s.generator === "error" ? "Model failed to load"
+      : s.step ? `Chain step ${s.step}: ${loading ? "loading " : ""}${s.label}…`
       : loading ? `Loading ${s.label}… ${(s.generator.match(/\((.*)\)/) || [, ""])[1]}`
+      : s.detector === "off" ? (s.model ? `${s.label} ready · detector off` : "Detector off")
       : s.model ? `Detector + ${s.label} ready` : "Detector ready";
     pill.title = s.error || label.textContent;
   } catch {}
@@ -716,6 +734,7 @@ async function humanize(again) {
   const req = again || { type: htype.value, model: settings.humanizer.value, text: $("htext").value.trim(), temperature: Number($("htemp").value), tries: settings.tries.value };
   if (!req.text) { $("htext").focus(); return; }
   const c = resultCard($("hresults"), [LABEL[req.type], LABEL[req.model] + " humanizer"]
+    .concat(req.model === "humanizer_chain" ? ["v2 RL → Writer voice → Evolved"] : [])
     .concat(req.tries > 1 ? [`best of ${req.tries} per passage`] : []), "");
   const orig = document.createElement("details");
   orig.className = "original"; orig.innerHTML = "<summary>Original AI text</summary><p></p>";

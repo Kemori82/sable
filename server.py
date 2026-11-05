@@ -2,15 +2,16 @@
 
   GET  /              the page, with the saved settings filled in
   POST /api/detect    {text, type}                                     -> score, band, highlighted segments
-  POST /api/humanize  {text, type, model: humanizer_writer|_evo|_rl, tries} -> streams the rewrite, passage by passage
+  POST /api/humanize  {text, type, model: humanizer_writer|_evo|_rl|_chain, tries} -> streams the rewrite, passage by passage
   POST /api/write     {type, topic, opening, model: writer_r3|writer_sft, max_tokens, temperature} -> streams text
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
-  POST /api/settings  {theme, humanizer, writer, tries, updates}       -> saved to settings.json
+  POST /api/settings  {theme, humanizer, writer, tries, updates, detector} -> saved to settings.json; detector
+                      "off" unloads the detector to free GPU memory, "on" loads it again
   GET  /api/update    is there a newer version on GitHub?              -> {available, files, message, mode, note}
   POST /api/update    update and restart                               -> streams progress lines, then RESTART
 
-The detector (DeBERTa) loads at start. A writer or humanizer loads only when first used; one is kept at a time.
+The detector (DeBERTa) loads at start unless it is turned off in Settings. A writer or humanizer loads only when first used; one is kept at a time.
 """
 import json
 import threading
@@ -27,11 +28,12 @@ from detector import Detector
 
 ROOT = Path(__file__).resolve().parent
 PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
-DEFAULTS = {"theme": "system", "humanizer": "humanizer_writer", "writer": "writer_r3", "tries": "8", "updates": "on"}
+DEFAULTS = {"theme": "system", "humanizer": "humanizer_writer", "writer": "writer_r3", "tries": "8", "updates": "on",
+            "detector": "on"}
 CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"),
-           "humanizer": ("humanizer_writer", "humanizer_evo", "humanizer_rl"),
+           "humanizer": ("humanizer_writer", "humanizer_evo", "humanizer_rl", "humanizer_chain"),
            "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1"),
-           "updates": ("on", "off")}
+           "updates": ("on", "off"), "detector": ("on", "off")}
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
 
 
@@ -59,15 +61,29 @@ class State:
         self.detector = None
         self.det_status, self.gen_status, self.error = "loading", "idle", None
         self.tok = self.model = self.name = None
+        self.step = None  # "2/3" while the chain humanizer runs
         self.gpu = threading.Lock()  # one load / generation / detection at a time
         self.stop = threading.Event()
 
     def load_detector(self):
-        try:
-            self.detector = Detector()
-            self.det_status = "ready"
-        except Exception:
-            self.det_status, self.error = "error", traceback.format_exc()
+        with self.gpu:
+            if self.detector is not None:
+                return
+            self.det_status = "loading"
+            try:
+                self.detector = Detector()
+                self.det_status = "ready"
+            except Exception:
+                self.det_status, self.error = "error", traceback.format_exc()
+
+    def unload_detector(self):
+        with self.gpu:  # waits for anything using it to finish
+            self.detector = None
+            self.det_status = "off"
+            torch.cuda.empty_cache()
+
+    def set_detector(self, on: bool):
+        threading.Thread(target=self.load_detector if on else self.unload_detector, daemon=True).start()
 
     def free_generator(self):
         self.model = self.tok = self.name = None
@@ -122,7 +138,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/status":
             self.json({"detector": S.det_status, "generator": S.gen_status, "model": S.name,
                        "label": generator.LABELS.get(S.name or (S.gen_status.split(" ") + [""])[1]),
-                       "error": S.error})
+                       "step": S.step, "error": S.error})
         else:
             self.send(404, b"{}")
 
@@ -133,7 +149,10 @@ class Handler(BaseHTTPRequestHandler):
         req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if self.path == "/api/settings":
-                return self.json(save_settings(req))
+                new = save_settings(req)
+                if "detector" in req:
+                    S.set_detector(new["detector"] == "on")
+                return self.json(new)
             if self.path == "/api/detect":
                 return self.detect(req)
             if self.path == "/api/update":
@@ -147,12 +166,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send(404, b"{}")
 
     def detect(self, req):
-        if S.det_status != "ready":
-            return self.json({"error": "The detector is still loading." if S.det_status == "loading" else S.error}, 503)
         doc_type = req.get("type") if req.get("type") in ("essay", "abstract") else "other"
-        with S.gpu:
-            r = S.detector.score(req.get("text") or "", doc_type)
-        self.json(r)
+        if S.det_status == "ready":
+            with S.gpu:
+                det = S.detector  # None if it was turned off while this waited
+                r = det.score(req.get("text") or "", doc_type) if det else None
+            if r is not None:
+                return self.json(r)
+        self.json({"error": {"loading": "The detector is still loading.",
+                             "off": "The detector is off. Turn it on in Settings."}.get(S.det_status, S.error)}, 503)
 
     def update(self):
         S.stop.set()  # finish any writing first, then nothing else runs while files change
@@ -175,7 +197,14 @@ class Handler(BaseHTTPRequestHandler):
         temperature = max(0.1, min(1.5, float(req.get("temperature", 0.8))))
         tries = int(req.get("tries")) if str(req.get("tries")) in CHOICES["tries"] else int(DEFAULTS["tries"])
         with S.gpu:
+            if S.detector is None:  # turned off (or still loading): nothing to pick the best try with
+                tries = 1
             S.stop.clear()
+            if name == "humanizer_chain":
+                try:
+                    return self.humanize_chain(paras, what, temperature, tries)
+                finally:
+                    S.step = None
             S.ensure_generator(name)
             self.start_stream()
             for i, para in enumerate(paras):
@@ -191,6 +220,52 @@ class Handler(BaseHTTPRequestHandler):
                             return
                     elif not self.write_piece(self.best_rewrite(prompt, passage, max_new, temperature, tries)):
                         return
+
+    def humanize_chain(self, paras, what: str, temperature: float, tries: int):
+        """Every passage rewritten by v2 RL, then Writer voice (one try each, in batches), then Evolved, which gets
+        the detector check: best of `tries` per passage, or streamed as it is written when the check is off."""
+        texts = [p for para in paras for p in para]
+        steps = generator.CHAIN_STEPS
+        for k, step in enumerate(steps, 1):
+            S.step = f"{k}/{len(steps)}"
+            S.ensure_generator(step)
+            if k < len(steps):
+                texts = self.rewrite_batch(texts, what, temperature)
+            if S.stop.is_set():
+                return self.start_stream()
+        self.start_stream()
+        i = 0
+        for pi, para in enumerate(paras):
+            for j in range(len(para)):
+                if S.stop.is_set():
+                    return
+                if pi or j:
+                    self.write_piece("\n\n" if j == 0 else " ")
+                max_new = int(len(S.tok(texts[i]).input_ids) * 1.8) + 32
+                prompt = generator.HUMANIZE.format(what=what, text=texts[i])
+                if tries == 1:
+                    if not self.stream(prompt, max_new, temperature, strip=True):
+                        return
+                elif not self.write_piece(self.best_rewrite(prompt, texts[i], max_new, temperature, tries)):
+                    return
+                i += 1
+
+    def rewrite_batch(self, texts: list[str], what: str, temperature: float, size: int = 8) -> list[str]:
+        """One rewrite of each text, size at a time; a text whose rewrite comes back empty is kept as it was."""
+        S.tok.padding_side = "left"
+        out = []
+        for g in range(0, len(texts), size):
+            group = texts[g:g + size]
+            chats = [S.tok.apply_chat_template([{"role": "user", "content": generator.HUMANIZE.format(what=what, text=t)}],
+                                               tokenize=False, add_generation_prompt=True) for t in group]
+            enc = S.tok(chats, return_tensors="pt", padding=True).to(S.model.device)
+            gen = S.model.generate(**enc, do_sample=True, top_p=1.0, top_k=0, repetition_penalty=1.0,
+                                   max_new_tokens=max(int(len(S.tok(t).input_ids) * 1.8) + 32 for t in group),
+                                   temperature=temperature, stopping_criteria=StoppingCriteriaList([StopFlag()]))
+            out += [S.tok.decode(o[enc.input_ids.shape[1]:], skip_special_tokens=True).strip() or t for t, o in zip(group, gen)]
+            if S.stop.is_set():
+                return out + texts[len(out):]
+        return out
 
     def best_rewrite(self, prompt: str, passage: str, max_new: int, temperature: float, n: int) -> str:
         """n rewrites of passage in one batch; the one the detector finds least AI-like, among those whose length
@@ -261,5 +336,5 @@ def serve(port: int) -> ThreadingHTTPServer:
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    threading.Thread(target=S.load_detector, daemon=True).start()
+    S.set_detector(load_settings()["detector"] == "on")
     return server
