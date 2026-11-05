@@ -538,7 +538,8 @@ function detectorDesc() {
   $("dDetector").textContent = on
     ? "Kept loaded while Sable is open. Turn it off to free its graphics memory for the writers and humanizers."
     : "Off, and its graphics memory is free. The Detector tab won't score text, and the humanizer makes one try per passage.";
-  $("dTries").textContent = on ? DESC["tries_" + settings.tries.value] : "The detector is off, so each passage gets one try.";
+  // saved, not settings.tries: this also runs while the settings controls are still being set up
+  $("dTries").textContent = on ? DESC["tries_" + saved.tries] : "The detector is off, so each passage gets one try.";
   $("sTries").classList.toggle("off", !on);
 }
 detectorDesc();
