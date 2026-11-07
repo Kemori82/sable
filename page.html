@@ -452,7 +452,11 @@
     <span class="t" style="margin-top:12px">Check with the detector</span>
     <div class="seg" id="sTries"><i class="thumb"></i>
       <button data-v="8" aria-pressed="true">8 tries</button><button data-v="4" aria-pressed="false">4 tries</button><button data-v="1" aria-pressed="false">Off</button></div>
-    <p class="desc" id="dTries"></p></div>
+    <p class="desc" id="dTries"></p>
+    <span class="t" style="margin-top:12px">Correct: grammar fixer</span>
+    <div class="seg" id="sGrammar"><i class="thumb"></i>
+      <button data-v="gec_standard" aria-pressed="true">Standard</button><button data-v="gec_tuned" aria-pressed="false">Tuned</button></div>
+    <p class="desc" id="dGrammar"></p></div>
   <div class="group"><span class="t">Writer</span>
     <div class="seg" id="sWriter"><i class="thumb"></i>
       <button data-v="writer_r3" aria-pressed="true">Round 3</button><button data-v="writer_sft" aria-pressed="false">SFT only</button></div>
@@ -481,6 +485,8 @@ const DESC = {
   tries_8: "The default. Writes 8 rewrites of each passage and keeps the one the detector finds least AI-like. Slower, but far less likely to be flagged.",
   tries_4: "Writes 4 rewrites of each passage and keeps the least AI-like. About twice as fast as 8.",
   tries_1: "One rewrite per passage, shown as it is written. Fastest, but flagged much more often.",
+  gec_standard: "The default. The original small grammar model (Unbabel), used by Correct as it comes.",
+  gec_tuned: "Trained further for Sable on realistic learner errors, plus a check that undoes changes that aren't grammar fixes (dropping \"it\", \"of\" or \"a\", changing a word into a different one). Fixes more real mistakes and leaves correct sentences alone more often.",
 };
 const LABEL = { humanizer_writer: "Writer-voice", humanizer_evo: "Evolved", humanizer_rl: "v2 RL", humanizer_chain: "Chain",writer_r3: "Round 3", writer_sft: "SFT only",
                 essay: "Essay", abstract: "Abstract", review: "Review", creative: "Fiction", other: "Other" };
@@ -525,10 +531,10 @@ const tabs = segmented($("tabs"), (t) => {
 $("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", grammar: "gec_standard", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
-for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"]]) {
+for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"], ["grammar", "sGrammar"]]) {
   const desc = $("d" + id.slice(1)), d = (v) => DESC[key === "tries" ? "tries_" + v : v];
   settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = d(v); detectorDesc(); });
   settings[key].value = saved[key];

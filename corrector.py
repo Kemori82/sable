@@ -13,7 +13,8 @@ without undoing the humanizing.
   3. Grammar   a small T5 grammar model (Unbabel/gec-t5_small, Apache-2.0, 0.12 GB) fixes each sentence; changes
                that are only spacing are undone. A fix is kept only if it is small (most words unchanged) and the
                paragraph's detector score doesn't rise past the line. (CoEdIT-large, 1.57 GB and non-commercial, found
-               more fixes but made no difference to meaning or detector scores in testing.)
+               more fixes but made no difference to meaning or detector scores in testing.) Optional: Sable's tuned
+               copy (models/gec-tuned) with safe_check, which puts back changes that aren't grammar-sized.
 
 Returns the corrected text and a word-level diff of what changed.
 """
@@ -30,6 +31,9 @@ MODELS = Path(__file__).resolve().parent / "models"
 # Sable's copies (bfloat16) when installed, otherwise downloaded from Hugging Face
 NLI_NAME = str(MODELS / "nli") if (MODELS / "nli").exists() else "cross-encoder/nli-deberta-v3-base"
 GEC_NAME = str(MODELS / "gec") if (MODELS / "gec").exists() else "Unbabel/gec-t5_small"
+# Sable's tuned grammar fixer (Settings -> Correct: grammar fixer -> Tuned): the same model trained further on
+# made-up errors and on realistic ones from Google's C4_200M (CC BY 4.0); used with safe_check on
+GEC_TUNED = str(MODELS / "gec-tuned") if (MODELS / "gec-tuned" / "config.json").exists() else None
 GEC_PREFIX = "gec: "
 MISSING, CONTRA = 0.5, 0.5   # entailment below MISSING = missing point; contradiction above CONTRA = wrong
 MADE_UP = 0.05               # a humanized sentence the original supports less than this is made up
@@ -62,8 +66,9 @@ def unrepeat(text: str) -> str:
 
 class Corrector:
     def __init__(self, device: str | None = None, nli: str = NLI_NAME, gec: str = GEC_NAME, gentle: bool = True,
-                 gec_prefix: str = GEC_PREFIX, gec_tokenizer: str | None = None):
+                 gec_prefix: str = GEC_PREFIX, gec_tokenizer: str | None = None, safe_check: bool = False):
         self.gentle = gentle
+        self.safe_check = safe_check  # put back grammar changes that aren't grammar-sized (safe_change)
         self.gec_prefix = gec_prefix
         self.grammar_fixes = []  # (before, after) of the last correct() call's kept grammar fixes  # sentence-level repair (repair); False = re-humanize flagged paragraphs (patch + best)
         self.device = device or devices.best()
@@ -171,6 +176,15 @@ class Corrector:
         wa, wb = a.split(), b.split()
         return difflib.SequenceMatcher(None, wa, wb).ratio() >= 0.8 and len(wb) <= len(wa) + 4
 
+    @staticmethod
+    def safe(a: str, b: str) -> str:
+        """b with each change that isn't a grammar-sized fix put back to a (see safe_change)."""
+        wa, wb, out = a.split(), b.split(), []
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, wa, wb, autojunk=False).get_opcodes():
+            keep = tag == "equal" or safe_change(wa[i1:i2], wb[j1:j2], wa[i1 - 1] if i1 else "", wa[i2] if i2 < len(wa) else "")
+            out += wb[j1:j2] if keep else wa[i1:i2]
+        return " ".join(out)
+
     # ---- all together ----
     def correct(self, original: str, humanized: str, rewrite, detect, score_doc=None, progress=lambda m: None) -> dict:
         """rewrite(passage) -> list of candidate rewrites (the humanizer); detect(texts) -> AI probabilities per
@@ -212,6 +226,8 @@ class Corrector:
             fixed = self.fix_grammar(s)
             base = detect([h])[0]
             for i, f in enumerate(fixed):
+                if self.safe_check:
+                    f = self.safe(s[i], f)
                 if f == s[i] or not self.small_edit(s[i], f):
                     continue
                 trial = s[:i] + [f] + s[i + 1:]
@@ -231,6 +247,46 @@ class Corrector:
                     notes["undone"] = notes.get("undone", 0) + 1
         text = "\n\n".join(out)
         return {"text": text, "diff": diff(humanized, text), "notes": notes}
+
+
+GRAMMAR_WORDS = set("""a an the this that these those some any each every no all both either neither another such
+in on at of for to with about from by into onto over under after before during since until through between among
+within without against toward towards upon off out up down as than like per via around across along behind beyond
+and or but nor so yet if because although though while when where whether which who whom whose what why how
+is are was were be been being am has have had having do does did done will would shall should can could may might
+must it its they them their there we us our you your he him his she her i me my one ones not more most much many
+less few also too only just even then""".split())
+PRONOUNS = {"it", "they", "them", "we", "us", "you", "he", "him", "she", "her", "i", "me", "this", "these", "those"}
+SAFE_PUNCT = set(",.;?!'")
+
+
+def bare(w: str) -> str:
+    return re.sub(r"^\W+|\W+$", "", w).lower()
+
+
+def safe_change(a: list[str], b: list[str], before: str = "", after: str = "") -> bool:
+    """Is changing words a into b a grammar-sized fix? Rejected: removing a pronoun, "of" or "a"/"an", or any other
+    word unless it is "the", "that" or a repeat; changing a word into one that doesn't share its first 3 letters
+    (unless both are small grammar words: "on" -> "of", "is" -> "are"); adding a word that isn't a small grammar
+    word or a form of a removed one; adding punctuation other than , . ; ? ! and '."""
+    added = set("".join(re.sub(r"[\w]", "", w) for w in b)) - set("".join(re.sub(r"[\w]", "", w) for w in a))
+    if added - SAFE_PUNCT:
+        return False
+    ba, bb = [bare(w) for w in a if bare(w)], [bare(w) for w in b if bare(w)]
+    if ba == bb:  # only punctuation or capitals changed: capitals only at the start of the sentence
+        return [re.sub(r"\W", "", w) for w in a] == [re.sub(r"\W", "", w) for w in b] or not before
+    related = lambda x, ys: any(x[:3] == y[:3] for y in ys)
+    for x in ba:
+        if x in bb or related(x, bb) or (x in GRAMMAR_WORDS and bb and all(y in GRAMMAR_WORDS for y in bb)):
+            continue
+        if x in PRONOUNS or x in {"of", "a", "an"}:
+            return False
+        if not (x in {"the", "that"} or x in (bare(before), bare(after))):
+            return False
+    for y in bb:
+        if not (y in ba or related(y, ba) or y in GRAMMAR_WORDS):
+            return False
+    return True
 
 
 def respace(a: str, b: str) -> str:

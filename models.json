@@ -257,6 +257,36 @@
    "asset": "gec--tokenizer_config.json"
   },
   {
+   "path": "gec-tuned/config.json",
+   "size": 1588,
+   "sha256": "37ec4561240d0da9efe5121222a8d4079f09c42f9cba142965b6a10ae187298e",
+   "asset": "gec-tuned--config.json"
+  },
+  {
+   "path": "gec-tuned/generation_config.json",
+   "size": 163,
+   "sha256": "b436e88030156e1bf43aeb6be41d9048a996892328a1b7d765013b33b35564be",
+   "asset": "gec-tuned--generation_config.json"
+  },
+  {
+   "path": "gec-tuned/model.safetensors",
+   "size": 121028656,
+   "sha256": "b7484451f96cef336104c6dceb7b78a1aade78eb5c56be2fe8fafddc8553eb85",
+   "asset": "gec-tuned--model.safetensors"
+  },
+  {
+   "path": "gec-tuned/tokenizer.json",
+   "size": 2422422,
+   "sha256": "1672aff360dcbbd9ec0f037c9aec6d29d12587fc969f6c19523b1011a8ad5a31",
+   "asset": "gec-tuned--tokenizer.json"
+  },
+  {
+   "path": "gec-tuned/tokenizer_config.json",
+   "size": 2547,
+   "sha256": "bb66e896a8081a956c2547b2dbc8c771bc75af905e66c06e9ad0f74e327954b3",
+   "asset": "gec-tuned--tokenizer_config.json"
+  },
+  {
    "path": "nli/config.json",
    "size": 1144,
    "sha256": "b017bef6f6e3135f336e1df6dcd3647dbbdb6f5a5bf6360f2881c62e12416099",

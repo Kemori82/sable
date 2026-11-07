@@ -8,8 +8,9 @@
                       grammar fixed (corrector.py)
   POST /api/stop      stops the current generation
   GET  /api/status    what is loaded / loading
-  POST /api/settings  {theme, humanizer, writer, tries, updates, detector} -> saved to settings.json; detector
-                      "off" unloads the detector to free GPU memory, "on" loads it again
+  POST /api/settings  {theme, humanizer, writer, tries, updates, detector, grammar} -> saved to settings.json;
+                      detector "off" unloads the detector to free GPU memory, "on" loads it again; grammar picks
+                      Correct's grammar fixer (gec_standard, or gec_tuned: Sable's tuned one plus the safety check)
   GET  /api/update    is there a newer version on GitHub?              -> {available, files, message, mode, note}
   POST /api/update    update and restart                               -> streams progress lines, then RESTART
 
@@ -32,11 +33,11 @@ from detector import Detector
 ROOT = Path(__file__).resolve().parent
 PAGE, SETTINGS = ROOT / "page.html", ROOT / "settings.json"
 DEFAULTS = {"theme": "system", "humanizer": "humanizer_writer", "writer": "writer_r3", "tries": "8", "updates": "on",
-            "detector": "on"}
+            "detector": "on", "grammar": "gec_standard"}
 CHOICES = {"theme": ("system", "light", "dark", "sable", "aurora", "midnight", "glass", "space"),
            "humanizer": ("humanizer_writer", "humanizer_evo", "humanizer_rl", "humanizer_chain"),
            "writer": ("writer_r3", "writer_sft"), "tries": ("8", "4", "1"),
-           "updates": ("on", "off"), "detector": ("on", "off")}
+           "updates": ("on", "off"), "detector": ("on", "off"), "grammar": ("gec_standard", "gec_tuned")}
 DEVICE = devices.name()  # shown when hovering over the status pill
 WRITE_TYPES, HUMANIZE_TYPES = ("essay", "review", "creative"), ("essay", "abstract", "review", "creative")
 
@@ -313,9 +314,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"error": "Correcting needs the detector. Turn it on in Settings."}, 503)
             S.stop.clear()
             try:
-                if S.corrector is None:
+                tuned = load_settings()["grammar"] == "gec_tuned" and corrector.GEC_TUNED is not None
+                if S.corrector is None or S.corrector.safe_check != tuned:
                     S.task = "Loading the corrector…"
-                    S.corrector = corrector.Corrector()
+                    S.corrector = None
+                    devices.empty_cache()
+                    S.corrector = corrector.Corrector(gec=corrector.GEC_TUNED if tuned else corrector.GEC_NAME,
+                                                      safe_check=tuned)
                 S.ensure_generator(name)
                 r = S.corrector.correct(original, text, rewrite, S.detector.passage_prob,
                                         score_doc=lambda t: S.detector.score(t, doc_type).get("score") or 0.0,

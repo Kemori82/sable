@@ -9,7 +9,7 @@ you type is sent anywhere.
 2. Double-click **Sable.bat**.
 
 The first run sets everything up by itself: Python 3.12, PyTorch and the other packages (in `.venv` inside the
-folder; nothing is installed system-wide), and the models (about 4.7 GB), each checked against `models.json`.
+folder; nothing is installed system-wide), and the models (about 4.8 GB), each checked against `models.json`.
 It also adds a Desktop shortcut. If the download is interrupted, run it again and it continues where it stopped.
 After that, **Sable.bat** or the shortcut just starts the app.
 
@@ -50,6 +50,12 @@ sentence, cuts repeats, and makes small grammar fixes, keeping each change only 
 make the text more AI-like. The rest is left as written, and the changes are shown marked up. On 6 Chain essays it
 cut meaning problems from 85 to 32 in 8-19 s each. It needs the detector on.
 
+Settings → Correct: grammar fixer has two choices. **Standard** (the default) is the small Unbabel grammar model as it
+comes. **Tuned** is the same model trained further for Sable, first on made-up errors and then on realistic learner
+errors from Google's C4_200M (CC BY 4.0), plus a check that puts back any change that isn't grammar-sized (dropping
+"it", "of" or "a", turning a word into a different one, new punctuation like "--"). On 1,000 held-out realistic
+errors it fixed 25% exactly against Standard's 16%, and it changed correct sentences less often (78% left alone vs 65%).
+
 The detector stays loaded while Sable is open (about 1 GB of graphics memory). Settings → Detector → Off unloads it;
 the Detector tab then won't score text and the humanizer makes one try per passage, until it is turned back on.
 
@@ -62,7 +68,7 @@ Settings also has eight themes: System, Light, Dark, Sable, Aurora, Midnight, Li
 - `deberta` the DeBERTa + RAID + papers detector; matrix weights stored in bfloat16 (they run in bfloat16 on
   the GPU, so scores are identical), embeddings in float32.
 - `nli` (cross-encoder/nli-deberta-v3-base, Apache-2.0) and `gec` (Unbabel/gec-t5_small, Apache-2.0): the
-  corrector's meaning check and grammar fixer, in bfloat16 (0.5 GB together).
+  corrector's meaning check and grammar fixer, in bfloat16 (0.5 GB together). `gec-tuned`: the Tuned grammar fixer (0.12 GB).
 - `calibration_deberta_paper.json` turns the detector's output into a percentage, with the 35% / 70% bands.
 
 The base model downloads from Hugging Face; the rest from this repo's `models-v1` release.
