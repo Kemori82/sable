@@ -1,314 +1,229 @@
 {
- "repo": "Kemori82/sable",
- "tag": "models-v1",
- "files": [
-  {
-   "path": "adapters/evo1/adapter.json",
-   "size": 28,
-   "sha256": "332b39ca6b84d0e26bd1b3650018a298ff149110557eba4ef144460d40f6e94b",
-   "asset": "adapters--evo1--adapter.json"
-  },
-  {
-   "path": "adapters/evo1/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "db07ecb92dd3e2969c6cf257e9be74c767825086409c0d1ccdf1990424810df0",
-   "asset": "adapters--evo1--adapter.safetensors"
-  },
-  {
-   "path": "adapters/evo2/adapter.json",
-   "size": 30,
-   "sha256": "fa75273a0444f6e5b9b8f93d7942482a14292755d683533ae201ea501711a39f",
-   "asset": "adapters--evo2--adapter.json"
-  },
-  {
-   "path": "adapters/evo2/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "0081a5fc190981081e6eb10e5f3224992dc6e81c8061959f6b8a11e08fd3c4bc",
-   "asset": "adapters--evo2--adapter.safetensors"
-  },
-  {
-   "path": "adapters/evo3/adapter.json",
-   "size": 30,
-   "sha256": "4b876ecbfc1ea283a611f580897ed5cbc1e9b419d28b7ae402bb6e3d0c1d75eb",
-   "asset": "adapters--evo3--adapter.json"
-  },
-  {
-   "path": "adapters/evo3/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "392882ba1d317abcba32f329f70d49b4eadef7bcf1abe663b088b24d0dd6fd49",
-   "asset": "adapters--evo3--adapter.safetensors"
-  },
-  {
-   "path": "adapters/evo4/adapter.json",
-   "size": 30,
-   "sha256": "f1fb0c04ae4f7c8218875e71c20dd3e5af2cfb2e83b6bc58c8656c55686a39bb",
-   "asset": "adapters--evo4--adapter.json"
-  },
-  {
-   "path": "adapters/evo4/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "578efb62cbc32f0f79f72880dba8233c2fcc17b765b79640e0a10e86a7f3a83c",
-   "asset": "adapters--evo4--adapter.safetensors"
-  },
-  {
-   "path": "adapters/humanizer/adapter.json",
-   "size": 28,
-   "sha256": "21546edad65a28aff8d24142d28ba716c30d23fc0806c84a411b6cc7cae21c87",
-   "asset": "adapters--humanizer--adapter.json"
-  },
-  {
-   "path": "adapters/humanizer/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "710219cd8117bfca5c3025e4186abf850b0d674fc20f643adc8ad59c3642a4d0",
-   "asset": "adapters--humanizer--adapter.safetensors"
-  },
-  {
-   "path": "adapters/r1/adapter.json",
-   "size": 29,
-   "sha256": "5451928264b470baa71a149e201c5c3a8cede31888777aa57f090a84a9d4fcd1",
-   "asset": "adapters--r1--adapter.json"
-  },
-  {
-   "path": "adapters/r1/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "02a920b0b2ad476da8979f4f87b582d01b12320e8d86d09f95f2924d97bb1921",
-   "asset": "adapters--r1--adapter.safetensors"
-  },
-  {
-   "path": "adapters/r2/adapter.json",
-   "size": 28,
-   "sha256": "44068820f28c3f3584dc9a310a5a42bb86c6cec08ccc5cc7aa6fe92ea29a0f5f",
-   "asset": "adapters--r2--adapter.json"
-  },
-  {
-   "path": "adapters/r2/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "0ffb989ba191fc53024f7a7071a70ab3bce25ad47fb6a13df879b69b324fc2cf",
-   "asset": "adapters--r2--adapter.safetensors"
-  },
-  {
-   "path": "adapters/r3/adapter.json",
-   "size": 28,
-   "sha256": "38707b1eb8a91747171c1e694d9b934a0498c8698373c4a250ee075b036ba26b",
-   "asset": "adapters--r3--adapter.json"
-  },
-  {
-   "path": "adapters/r3/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "13309eba2f64d87a5ce70e9e051513f5796eb57059ef92e640fed452973ef198",
-   "asset": "adapters--r3--adapter.safetensors"
-  },
-  {
-   "path": "adapters/rl/adapter.json",
-   "size": 35,
-   "sha256": "42209c62964eb58a66ba015bfbe6d5e8272414f06cb166a33157912e24c7a306",
-   "asset": "adapters--rl--adapter.json"
-  },
-  {
-   "path": "adapters/rl/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "918c981da1e1690ad4a64736f6e5cd7e1233dc36f6ccd0fefc5789db15465e04",
-   "asset": "adapters--rl--adapter.safetensors"
-  },
-  {
-   "path": "adapters/sft/adapter.json",
-   "size": 30,
-   "sha256": "d90cb04616ea63a3d3eb1fc2ab16b5016730e196743bc537edd6963fe8c9dd61",
-   "asset": "adapters--sft--adapter.json"
-  },
-  {
-   "path": "adapters/sft/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "e16c7f5abc828ef4c36c989362fed10de16a074cc9bc8c5ad8ddd5bdee57311c",
-   "asset": "adapters--sft--adapter.safetensors"
-  },
-  {
-   "path": "adapters/writer_voice/adapter.json",
-   "size": 29,
-   "sha256": "5451928264b470baa71a149e201c5c3a8cede31888777aa57f090a84a9d4fcd1",
-   "asset": "adapters--writer_voice--adapter.json"
-  },
-  {
-   "path": "adapters/writer_voice/adapter.safetensors",
-   "size": 73911112,
-   "sha256": "bea489b821dc6255c5619b581baa8de20f70c51a01716fba01c90030750be75d",
-   "asset": "adapters--writer_voice--adapter.safetensors"
-  },
-  {
-   "path": "base-1.5b/config.json",
-   "size": 660,
-   "sha256": "98d2ff8cc47488d08a2b0b3acf4eb99ef210779b42bd48605f6b8e36acdbf670",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
-    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "file": "config.json"
-   }
-  },
-  {
-   "path": "base-1.5b/generation_config.json",
-   "size": 242,
-   "sha256": "e558847a8b4402616f1273797b015104dc266fe4b520056fca88823ba8f8ebe6",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
-    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "file": "generation_config.json"
-   }
-  },
-  {
-   "path": "base-1.5b/model.safetensors",
-   "size": 3087467144,
-   "sha256": "dd924a11b4c220f385b51ffa522daea7c9f3d850e31b162bb5661df483c6d3ee",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
-    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "file": "model.safetensors"
-   }
-  },
-  {
-   "path": "base-1.5b/tokenizer.json",
-   "size": 7031645,
-   "sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
-    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "file": "tokenizer.json"
-   }
-  },
-  {
-   "path": "base-1.5b/tokenizer_config.json",
-   "size": 7305,
-   "sha256": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
-   "hf": {
-    "repo": "Qwen/Qwen2.5-1.5B-Instruct",
-    "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
-    "file": "tokenizer_config.json"
-   }
-  },
-  {
-   "path": "calibration_deberta_paper.json",
-   "size": 106995,
-   "sha256": "a12f39c895751f5a9ee3c6d23cf8e519192aa24420944e765acaf81fa443846c",
-   "asset": "calibration_deberta_paper.json"
-  },
-  {
-   "path": "deberta/config.json",
-   "size": 1047,
-   "sha256": "311a6d65cd3310706b4e62d98eaae0b49b6cb512cdb109fdaa24e6c4cfa0cc52",
-   "asset": "deberta--config.json"
-  },
-  {
-   "path": "deberta/model.safetensors",
-   "size": 566665788,
-   "sha256": "f61ab754c317b1a2d105dce903de67a2c437c91b1b842dd7798509f050872645",
-   "asset": "deberta--model.safetensors"
-  },
-  {
-   "path": "deberta/ood.json",
-   "size": 105,
-   "sha256": "bc68f4b544651079b21e07c618c32d49d55f2acfd585b0cf8d51f7c7e687bc18",
-   "asset": "deberta--ood.json"
-  },
-  {
-   "path": "deberta/ood_reference.npy",
-   "size": 30720128,
-   "sha256": "e17a3966cedfd4869a28b488afeaa7614d337b06b8b2ee36b1ed0954474271ef",
-   "asset": "deberta--ood_reference.npy"
-  },
-  {
-   "path": "deberta/tokenizer.json",
-   "size": 8339974,
-   "sha256": "40b244adff13af033491ed93e56c53ecfc9c652cde898ac62c09eebcad940f34",
-   "asset": "deberta--tokenizer.json"
-  },
-  {
-   "path": "deberta/tokenizer_config.json",
-   "size": 562,
-   "sha256": "9e68fa829c3d566a23e830b44bbddabc0386d1602886a9e8277ee13cb723cfd8",
-   "asset": "deberta--tokenizer_config.json"
-  },
-  {
-   "path": "gec/config.json",
-   "size": 1652,
-   "sha256": "139abcc83ddb86a3cdfd6a4b855e00b9f655d26ab64b51d8980bf091536eedc3",
-   "asset": "gec--config.json"
-  },
-  {
-   "path": "gec/generation_config.json",
-   "size": 171,
-   "sha256": "50d9dd03ee7c5563283dff0babbbb6a58da6a7d344c1ff49cc3cf350e033367e",
-   "asset": "gec--generation_config.json"
-  },
-  {
-   "path": "gec/model.safetensors",
-   "size": 121028656,
-   "sha256": "40726c75a767312d218d46beef784981e020d9fccf84450515a884564e3a6ef9",
-   "asset": "gec--model.safetensors"
-  },
-  {
-   "path": "gec/tokenizer.json",
-   "size": 2422434,
-   "sha256": "5a1e6d0393c72d2c17483eddef327a7090c9a51989f8f2ebc52d5322dcbcacac",
-   "asset": "gec--tokenizer.json"
-  },
-  {
-   "path": "gec/tokenizer_config.json",
-   "size": 2667,
-   "sha256": "fdd97fb0692db7984af52fb70629f5dd09967f3176d41c8aa43255a3f5fc2fc4",
-   "asset": "gec--tokenizer_config.json"
-  },
-  {
-   "path": "gec-tuned/config.json",
-   "size": 1588,
-   "sha256": "37ec4561240d0da9efe5121222a8d4079f09c42f9cba142965b6a10ae187298e",
-   "asset": "gec-tuned--config.json"
-  },
-  {
-   "path": "gec-tuned/generation_config.json",
-   "size": 163,
-   "sha256": "b436e88030156e1bf43aeb6be41d9048a996892328a1b7d765013b33b35564be",
-   "asset": "gec-tuned--generation_config.json"
-  },
-  {
-   "path": "gec-tuned/model.safetensors",
-   "size": 121028656,
-   "sha256": "b7484451f96cef336104c6dceb7b78a1aade78eb5c56be2fe8fafddc8553eb85",
-   "asset": "gec-tuned--model.safetensors"
-  },
-  {
-   "path": "gec-tuned/tokenizer.json",
-   "size": 2422422,
-   "sha256": "1672aff360dcbbd9ec0f037c9aec6d29d12587fc969f6c19523b1011a8ad5a31",
-   "asset": "gec-tuned--tokenizer.json"
-  },
-  {
-   "path": "gec-tuned/tokenizer_config.json",
-   "size": 2547,
-   "sha256": "bb66e896a8081a956c2547b2dbc8c771bc75af905e66c06e9ad0f74e327954b3",
-   "asset": "gec-tuned--tokenizer_config.json"
-  },
-  {
-   "path": "nli/config.json",
-   "size": 1144,
-   "sha256": "b017bef6f6e3135f336e1df6dcd3647dbbdb6f5a5bf6360f2881c62e12416099",
-   "asset": "nli--config.json"
-  },
-  {
-   "path": "nli/model.safetensors",
-   "size": 368873646,
-   "sha256": "6d6e33241d08686c38be4fb949f2b1c7ff5212a8430bef5e3d3a0f01c2b6ecfc",
-   "asset": "nli--model.safetensors"
-  },
-  {
-   "path": "nli/tokenizer.json",
-   "size": 8339875,
-   "sha256": "2c070ff353c36f85e20919da787a30e1e8e52b626d0e026e044f373378f6d0bf",
-   "asset": "nli--tokenizer.json"
-  },
-  {
-   "path": "nli/tokenizer_config.json",
-   "size": 526,
-   "sha256": "5a3d92a7fca377651626bd8c0d48f194d0cb1625cf6c88bac3d0b1072d92cf2a",
-   "asset": "nli--tokenizer_config.json"
-  }
- ]
+  "files": [
+    {
+      "asset": "detector--calibration.json",
+      "path": "detector/calibration.json",
+      "sha256": "a12f39c895751f5a9ee3c6d23cf8e519192aa24420944e765acaf81fa443846c",
+      "size": 106995
+    },
+    {
+      "asset": "detector--config.json",
+      "path": "detector/config.json",
+      "sha256": "311a6d65cd3310706b4e62d98eaae0b49b6cb512cdb109fdaa24e6c4cfa0cc52",
+      "size": 1047
+    },
+    {
+      "asset": "detector--model.onnx",
+      "path": "detector/model.onnx",
+      "sha256": "fdfe8c44e8acc90d593692c453b5ae18d5359b1825e0aae9ba71207dd96aeaac",
+      "size": 369780185
+    },
+    {
+      "asset": "detector--ood.json",
+      "path": "detector/ood.json",
+      "sha256": "bc68f4b544651079b21e07c618c32d49d55f2acfd585b0cf8d51f7c7e687bc18",
+      "size": 105
+    },
+    {
+      "asset": "detector--ood_reference.npy",
+      "path": "detector/ood_reference.npy",
+      "sha256": "e17a3966cedfd4869a28b488afeaa7614d337b06b8b2ee36b1ed0954474271ef",
+      "size": 30720128
+    },
+    {
+      "asset": "detector--tokenizer.json",
+      "path": "detector/tokenizer.json",
+      "sha256": "40b244adff13af033491ed93e56c53ecfc9c652cde898ac62c09eebcad940f34",
+      "size": 8339974
+    },
+    {
+      "asset": "detector--tokenizer_config.json",
+      "path": "detector/tokenizer_config.json",
+      "sha256": "9e68fa829c3d566a23e830b44bbddabc0386d1602886a9e8277ee13cb723cfd8",
+      "size": 562
+    },
+    {
+      "asset": "gec--config.json",
+      "path": "gec/config.json",
+      "sha256": "139abcc83ddb86a3cdfd6a4b855e00b9f655d26ab64b51d8980bf091536eedc3",
+      "size": 1652
+    },
+    {
+      "asset": "gec--decoder_model_merged.onnx",
+      "path": "gec/decoder_model_merged.onnx",
+      "sha256": "9314cee3ec977b25f9c872398d0d3dfd316cb221c6b09f59984a4a12fbd8fba8",
+      "size": 116539501
+    },
+    {
+      "asset": "gec--encoder_model.onnx",
+      "path": "gec/encoder_model.onnx",
+      "sha256": "2e6defe1d3e2692cf566ff121e305e27b2deb2283e2d95213d63803652a8a2fd",
+      "size": 70763825
+    },
+    {
+      "asset": "gec--generation_config.json",
+      "path": "gec/generation_config.json",
+      "sha256": "50d9dd03ee7c5563283dff0babbbb6a58da6a7d344c1ff49cc3cf350e033367e",
+      "size": 171
+    },
+    {
+      "asset": "gec--tokenizer.json",
+      "path": "gec/tokenizer.json",
+      "sha256": "5a1e6d0393c72d2c17483eddef327a7090c9a51989f8f2ebc52d5322dcbcacac",
+      "size": 2422434
+    },
+    {
+      "asset": "gec--tokenizer_config.json",
+      "path": "gec/tokenizer_config.json",
+      "sha256": "fdd97fb0692db7984af52fb70629f5dd09967f3176d41c8aa43255a3f5fc2fc4",
+      "size": 2667
+    },
+    {
+      "asset": "gec-tuned--config.json",
+      "path": "gec-tuned/config.json",
+      "sha256": "37ec4561240d0da9efe5121222a8d4079f09c42f9cba142965b6a10ae187298e",
+      "size": 1588
+    },
+    {
+      "asset": "gec-tuned--decoder_model_merged.onnx",
+      "path": "gec-tuned/decoder_model_merged.onnx",
+      "sha256": "1aada97544da367e00b2180dec8ccecf44185bca0580cfaf0ca0a973b944bd3d",
+      "size": 116539501
+    },
+    {
+      "asset": "gec-tuned--encoder_model.onnx",
+      "path": "gec-tuned/encoder_model.onnx",
+      "sha256": "1ac564ae8e95a715a998b1e3eb9c64179c495db708522d7efb92556a4d8bb397",
+      "size": 70763825
+    },
+    {
+      "asset": "gec-tuned--generation_config.json",
+      "path": "gec-tuned/generation_config.json",
+      "sha256": "b436e88030156e1bf43aeb6be41d9048a996892328a1b7d765013b33b35564be",
+      "size": 163
+    },
+    {
+      "asset": "gec-tuned--tokenizer.json",
+      "path": "gec-tuned/tokenizer.json",
+      "sha256": "1672aff360dcbbd9ec0f037c9aec6d29d12587fc969f6c19523b1011a8ad5a31",
+      "size": 2422422
+    },
+    {
+      "asset": "gec-tuned--tokenizer_config.json",
+      "path": "gec-tuned/tokenizer_config.json",
+      "sha256": "bb66e896a8081a956c2547b2dbc8c771bc75af905e66c06e9ad0f74e327954b3",
+      "size": 2547
+    },
+    {
+      "asset": "nli--config.json",
+      "path": "nli/config.json",
+      "sha256": "b017bef6f6e3135f336e1df6dcd3647dbbdb6f5a5bf6360f2881c62e12416099",
+      "size": 1144
+    },
+    {
+      "asset": "nli--model.onnx",
+      "path": "nli/model.onnx",
+      "sha256": "d49d7bee180ae61bb31b93a8038ec173634c8ee1c8eaea3ce0017ab3c5956743",
+      "size": 369782873
+    },
+    {
+      "asset": "nli--tokenizer.json",
+      "path": "nli/tokenizer.json",
+      "sha256": "2c070ff353c36f85e20919da787a30e1e8e52b626d0e026e044f373378f6d0bf",
+      "size": 8339875
+    },
+    {
+      "asset": "nli--tokenizer_config.json",
+      "path": "nli/tokenizer_config.json",
+      "sha256": "5a3d92a7fca377651626bd8c0d48f194d0cb1625cf6c88bac3d0b1072d92cf2a",
+      "size": 526
+    },
+    {
+      "asset": "qwen--adapters--evo1.gguf",
+      "path": "qwen/adapters/evo1.gguf",
+      "sha256": "6282cb45e81563723a99fae10d2f1bd536e3f9e5b150056d199f3e2a3ff62ca6",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--evo2.gguf",
+      "path": "qwen/adapters/evo2.gguf",
+      "sha256": "bf1a6f3059ea191c978bd2378e8b01bb1269ad7d4e9f9c0104e483cd2d80a27c",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--evo3.gguf",
+      "path": "qwen/adapters/evo3.gguf",
+      "sha256": "17470e8b3d0dc2115496dfccdac8c4afcefc82ff0118a68ca7c362fcaadcfbc4",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--evo4.gguf",
+      "path": "qwen/adapters/evo4.gguf",
+      "sha256": "449a6edaa695d9c29889d569a65c41aec720e6acfd070c59a4098253d9563bd8",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--humanizer.gguf",
+      "path": "qwen/adapters/humanizer.gguf",
+      "sha256": "4d5c8fb488a45e82a9778214770574f2f1c78fd15cfab3a05ee43b044e9a8a4c",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--r1.gguf",
+      "path": "qwen/adapters/r1.gguf",
+      "sha256": "7686e606c4352d8ce08662993abd6ecbd9df0a596e614b1609746f961622ce7e",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--r2.gguf",
+      "path": "qwen/adapters/r2.gguf",
+      "sha256": "65b0f21f12b1a19f62e30cb7762067182243d7af7ab8c0f810dbc6737d6a406e",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--r3.gguf",
+      "path": "qwen/adapters/r3.gguf",
+      "sha256": "e1fced6d155b0c1fd19b8cb9cc0c1ae5f3bf004a58403d8416616af226f4a2dc",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--rl.gguf",
+      "path": "qwen/adapters/rl.gguf",
+      "sha256": "036519039823d42a8a9d736fea741cbbddb27bdb442085090fbac74cc7064461",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--sft.gguf",
+      "path": "qwen/adapters/sft.gguf",
+      "sha256": "11f9730dd6b8b0fc1c6d8df72243916bc618162555e1909f5019f23b5035e087",
+      "size": 36956448
+    },
+    {
+      "asset": "qwen--adapters--writer_voice.gguf",
+      "path": "qwen/adapters/writer_voice.gguf",
+      "sha256": "7d595022c3a768444d1294cea28ef8033301f697279a2610293b996a67a1c122",
+      "size": 36956448
+    },
+    {
+      "asset_sizes": [
+        1900000000,
+        1193669056
+      ],
+      "assets": [
+        "qwen--base-bf16.gguf.part0",
+        "qwen--base-bf16.gguf.part1"
+      ],
+      "path": "qwen/base-bf16.gguf",
+      "sha256": "65e908d4971983ad57bc6aff94eb22317cfc00e08f86d44b3237039c9fb55383",
+      "size": 3093669056
+    },
+    {
+      "asset": "qwen--tokenizer.json",
+      "path": "qwen/tokenizer.json",
+      "sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "size": 7031645
+    }
+  ],
+  "repo": "Kemori82/sable",
+  "tag": "models-v2"
 }

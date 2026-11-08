@@ -4,3 +4,8 @@ models/
 __pycache__/
 settings.json
 *.part
+target/
+dist/
+models.json.new
+*.old
+*.new

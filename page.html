@@ -57,9 +57,8 @@
   [data-theme="aurora"] {  /* deep night sky with aquamarine light; cards are glass over the glow */
     color-scheme: dark;
     --bg: #06171c;
-    --bg-art: radial-gradient(900px 520px at 12% -8%, rgba(94,240,200,.22), transparent 62%),
-              radial-gradient(800px 600px at 92% 4%, rgba(120,110,255,.16), transparent 60%),
-              radial-gradient(1000px 700px at 60% 115%, rgba(32,190,220,.16), transparent 60%);
+    --bg-art: radial-gradient(1200px 700px at 50% 120%, rgba(32,150,180,.14), transparent 60%),
+              linear-gradient(#03100f, #06171c 55%, #071a22);
     --surface: rgba(12,40,47,.58); --surface-2: rgba(127,255,212,.07); --fg: #e6fffa; --muted: #8fb8b0; --faint: #557a74;
     --line: rgba(127,255,212,.12); --accent: #5ef0c8; --accent-fg: #032a22; --accent-soft: rgba(94,240,200,.16);
     --good: #5ef0c8; --good-soft: rgba(94,240,200,.15); --warn: #ffd166; --warn-soft: rgba(255,209,102,.15);
@@ -69,17 +68,17 @@
     --pop-shadow: 0 0 0 .5px rgba(127,255,212,.16), 0 24px 64px rgba(0,0,0,.5);
     --seg-thumb: rgba(127,255,212,.18); --seg-shadow: 0 0 0 .5px rgba(127,255,212,.2), 0 1px 3px rgba(0,0,0,.3);
   }
-  [data-theme="midnight"] {  /* deep navy, periwinkle accent, a faint glow from above */
+  [data-theme="midnight"] {  /* pitch black, bright white text, white accents */
     color-scheme: dark;
-    --bg: #070b18; --bg-art: radial-gradient(1100px 520px at 50% -12%, rgba(90,120,255,.20), transparent 65%);
-    --surface: rgba(16,24,46,.72); --surface-2: rgba(122,162,255,.08); --fg: #e8edff; --muted: #8e9bc4; --faint: #56618a;
-    --line: rgba(122,162,255,.12); --accent: #7aa2ff; --accent-fg: #071030; --accent-soft: rgba(122,162,255,.16);
-    --good: #6fdc9b; --good-soft: rgba(111,220,155,.15); --warn: #ffc56b; --warn-soft: rgba(255,197,107,.15);
-    --bad: #ff7b8a; --bad-soft: rgba(255,123,138,.16); --mark: rgba(255,197,107,.22);
-    --bar: rgba(7,11,24,.35); --glass: blur(20px) saturate(150%);
-    --shadow: 0 0 0 .5px rgba(122,162,255,.12), 0 8px 28px rgba(0,0,0,.35);
-    --pop-shadow: 0 0 0 .5px rgba(122,162,255,.18), 0 24px 64px rgba(0,0,0,.55);
-    --seg-thumb: rgba(122,162,255,.2); --seg-shadow: 0 0 0 .5px rgba(122,162,255,.22), 0 1px 3px rgba(0,0,0,.3);
+    --bg: #000000; --bg-art: none;
+    --surface: #0b0b0c; --surface-2: #161618; --fg: #ffffff; --muted: #d2d2d6; --faint: #8a8a90;
+    --line: rgba(255,255,255,.14); --accent: #ffffff; --accent-fg: #000000; --accent-soft: rgba(255,255,255,.14);
+    --good: #5bf08f; --good-soft: rgba(91,240,143,.16); --warn: #ffd060; --warn-soft: rgba(255,208,96,.16);
+    --bad: #ff5c6c; --bad-soft: rgba(255,92,108,.17); --mark: rgba(255,208,96,.26);
+    --bar: #000000; --glass: none;
+    --shadow: 0 0 0 1px rgba(255,255,255,.10);
+    --pop-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 24px 64px rgba(0,0,0,.9);
+    --seg-thumb: #2a2a2e; --seg-shadow: 0 0 0 1px rgba(255,255,255,.16);
   }
   [data-theme="glass"] {  /* liquid glass: bright color fields seen through frosted, edge-lit panels */
     color-scheme: light;
@@ -133,12 +132,9 @@
   button, input, textarea { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* ---- header: translucent bar; content scrolls underneath, edge only shows once scrolled ---- */
+  /* ---- header: no bar of its own, so the theme's background runs through it; it is also the window's title bar ---- */
   header { position: fixed; inset: 0 0 auto 0; z-index: 10; height: 60px; display: grid; grid-template-columns: 1fr auto 1fr;
-           align-items: center; gap: 16px; padding: 0 16px 0 20px; background: var(--bar); backdrop-filter: blur(20px) saturate(180%); }
-  header::after { content: ""; position: absolute; inset: auto 0 -12px 0; height: 12px; pointer-events: none; opacity: 0;
-                  background: linear-gradient(var(--line), transparent); transition: opacity .2s; }
-  header.scrolled::after { opacity: 1; }
+           align-items: center; gap: 16px; padding: 0 16px 0 20px; background: transparent; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand svg { width: 26px; height: 26px; border-radius: 7px; flex: none; }
   h1 { font: 600 19px/1 var(--display); letter-spacing: -.02em; margin: 0; }
@@ -157,7 +153,9 @@
   @media (max-width: 760px) { .pill span:last-child { display: none; } .pill { padding: 0 10px; } h1 { display: none; } }
 
   /* ---- layout ---- */
-  main { position: absolute; inset: 0; overflow: auto; padding: 80px 20px 32px; }
+  /* below the header (which has no bar of its own), fading out at its top edge as it scrolls */
+  main { position: absolute; inset: 60px 0 0 0; overflow: auto; padding: 20px 20px 32px;
+         -webkit-mask-image: linear-gradient(transparent 0, #000 18px); mask-image: linear-gradient(transparent 0, #000 18px); }
   .tab { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 820px); gap: 20px; align-items: start; justify-content: center; }
   @media (max-width: 860px) { .tab { grid-template-columns: 1fr; } }
   .card { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: var(--glass); }
@@ -313,6 +311,8 @@
   .swatch .pv::before { content: ""; position: absolute; inset: 22% 14% 30% 14%; border-radius: 5px; background: var(--surface);
                         box-shadow: 0 1px 3px rgba(0,0,0,.15); }
   .swatch .pv::after { content: ""; position: absolute; left: 14%; right: 40%; bottom: 13%; height: 9%; border-radius: 4px; background: var(--accent); }
+  .swatch .pv[data-theme="aurora"] { background: linear-gradient(170deg, transparent 30%, rgba(80,255,170,.45) 42%, transparent 56%),
+                                     linear-gradient(176deg, transparent 52%, rgba(94,240,210,.35) 62%, transparent 74%), var(--bg-art), var(--bg); }
   .swatch .pv.split { background: linear-gradient(135deg, #f5f5f7 50%, #141416 50%); }
   .swatch .pv.split::before { background: linear-gradient(135deg, #ffffff 50%, #1f1f22 50%); }
   .swatch .pv.split::after { background: linear-gradient(90deg, #0071e3 50%, #0a84ff 50%); }
@@ -326,19 +326,103 @@
     dialog, dialog[open] { transform: none; filter: none; }
   }
   @media (prefers-reduced-transparency: reduce) {
-    header { background: var(--bg); backdrop-filter: none; }
     .card, dialog { backdrop-filter: none; }
     [data-theme="aurora"] { --surface: #0c282f; --bar: #06171c; }
-    [data-theme="midnight"] { --surface: #111a30; --bar: #070b18; }
     [data-theme="space"] { --surface: #120e20; --bar: #04030a; }
     [data-theme="glass"] { --surface: #f7f8fc; --surface-2: #eceef5; --bar: #eef0f8; }
   }
   @media (prefers-contrast: more) {
     .card, dialog, .field { box-shadow: none; border: 1px solid var(--muted); }
   }
+
+  /* ---- moving skies (Aurora, Space, Sable, Liquid Glass): a fixed layer behind everything; only transforms and
+     opacity animate, so it stays smooth; it holds still when Windows asks for less motion ---- */
+  .sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; display: none; }
+  .sky i { position: absolute; display: block; will-change: transform, opacity; }
+  main { z-index: 1; }
+
+  /* Aurora: ribbons of light in a dark sky, brightest along their lower edge and fading upward, with faint rays;
+     they drift sideways, fold and flare at different speeds, like the northern lights */
+  [data-theme="aurora"] .sky { display: block; }
+  [data-theme="aurora"] .sky i { left: -20vw; width: 140vw; height: 40vh; filter: blur(16px); mix-blend-mode: screen;
+    border-radius: 0 0 46% 54% / 0 0 30% 38%; transform-origin: 50% 100%;
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 4px, rgba(0,0,0,.84) 4px 6px, #000 6px 13px, rgba(0,0,0,.8) 13px 15px, #000 15px 21px, rgba(0,0,0,.88) 21px 26px), linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); mask-image: repeating-linear-gradient(90deg, #000 0 4px, rgba(0,0,0,.84) 4px 6px, #000 6px 13px, rgba(0,0,0,.8) 13px 15px, #000 15px 21px, rgba(0,0,0,.88) 21px 26px), linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent); -webkit-mask-composite: source-in; mask-composite: intersect; }
+  [data-theme="aurora"] .sky i:nth-child(1) { top: -16vh; background: linear-gradient(to top, transparent 0%, rgba(80,255,170,.3) 7%, rgba(80,255,170,.85) 17%, rgba(80,255,170,.4) 32%, rgba(150,110,255,.2) 52%, transparent 86%);
+    animation: veil-a 23s ease-in-out infinite alternate, flare 7s ease-in-out infinite alternate; }
+  [data-theme="aurora"] .sky i:nth-child(2) { top: 22vh; border-radius: 0 0 58% 42% / 0 0 38% 26%;
+    background: linear-gradient(to top, transparent 0%, rgba(94,240,210,.3) 7%, rgba(94,240,210,.85) 17%, rgba(94,240,210,.4) 32%, rgba(90,170,255,.2) 52%, transparent 86%);
+    animation: veil-b 31s ease-in-out infinite alternate, flare 9s ease-in-out -3s infinite alternate; }
+  [data-theme="aurora"] .sky i:nth-child(3) { top: 44vh; height: 34vh; border-radius: 0 0 40% 60% / 0 0 26% 40%;
+    background: linear-gradient(to top, transparent 0%, rgba(120,255,150,.3) 7%, rgba(120,255,150,.85) 17%, rgba(120,255,150,.4) 32%, rgba(255,110,200,.2) 52%, transparent 86%);
+    animation: veil-c 37s ease-in-out infinite alternate, flare 11s ease-in-out -6s infinite alternate; }
+  [data-theme="aurora"] .sky i:nth-child(4) { top: 60vh; height: 70vh; left: -10vw; width: 120vw; filter: blur(70px);
+    -webkit-mask-image: none; mask-image: none; opacity: .45; mix-blend-mode: normal; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(40,180,200,.3), transparent);
+    animation: glow-drift 29s ease-in-out infinite alternate; }
+  @keyframes veil-a { 0% { transform: translateX(-6vw) skewX(-12deg) scaleY(.85) rotate(-4deg); }
+                      50% { transform: translateX(4vw) skewX(8deg) scaleY(1.15) rotate(2deg); }
+                      100% { transform: translateX(9vw) skewX(-4deg) scaleY(.95) rotate(5deg); } }
+  @keyframes veil-b { 0% { transform: translateX(8vw) skewX(10deg) scaleY(1.1) rotate(3deg); }
+                      50% { transform: translateX(-3vw) skewX(-10deg) scaleY(.8) rotate(-2deg); }
+                      100% { transform: translateX(-10vw) skewX(6deg) scaleY(1.2) rotate(-5deg); } }
+  @keyframes veil-c { 0% { transform: translateX(-4vw) skewX(6deg) scaleY(.9); }
+                      100% { transform: translateX(7vw) skewX(-14deg) scaleY(1.25); } }
+  @keyframes flare { 0% { opacity: .35; } 35% { opacity: .75; } 60% { opacity: .45; } 100% { opacity: .8; } }
+  @keyframes glow-drift { 0% { transform: translate(-8vw, 4vh) scale(1); } 100% { transform: translate(8vw, -4vh) scale(1.2); } }
+
+  /* Space: the stars twinkle and the nebulae drift */
+  [data-theme="space"] .sky { display: block; }
+  [data-theme="space"] .sky i:nth-child(-n+2) { inset: 0; background-size: 380px 260px;
+    background-image: radial-gradient(1.3px 1.3px at 60px 120px, #fff, transparent), radial-gradient(1px 1px at 210px 30px, #fff, transparent),
+                      radial-gradient(1.6px 1.6px at 300px 210px, #fff, transparent), radial-gradient(1px 1px at 120px 240px, #fff, transparent),
+                      radial-gradient(1.2px 1.2px at 350px 110px, #fff, transparent);
+    animation: twinkle 4.5s ease-in-out infinite alternate; }
+  [data-theme="space"] .sky i:nth-child(2) { background-position: 190px 130px; animation-duration: 6.5s; animation-delay: -2s; }
+  [data-theme="space"] .sky i:nth-child(3) { width: 70vw; height: 70vh; right: -15vw; top: -20vh; border-radius: 50%; filter: blur(60px);
+    background: radial-gradient(closest-side, rgba(176,90,255,.28), transparent); animation: glow-drift 34s ease-in-out infinite alternate; }
+  [data-theme="space"] .sky i:nth-child(4) { width: 60vw; height: 60vh; left: -15vw; bottom: -20vh; border-radius: 50%; filter: blur(60px);
+    background: radial-gradient(closest-side, rgba(255,80,160,.2), transparent); animation: glow-drift 41s ease-in-out -10s infinite alternate-reverse; }
+  @keyframes twinkle { 0% { opacity: .15; } 100% { opacity: .85; } }
+
+  /* Sable: a warm glow that breathes like candlelight */
+  [data-theme="sable"] .sky { display: block; }
+  [data-theme="sable"] .sky i:nth-child(1) { width: 80vw; height: 70vh; right: -20vw; top: -30vh; border-radius: 50%; filter: blur(50px);
+    background: radial-gradient(closest-side, rgba(212,162,89,.18), transparent); animation: breathe 9s ease-in-out infinite alternate; }
+  [data-theme="sable"] .sky i:nth-child(2) { width: 50vw; height: 50vh; left: -15vw; bottom: -25vh; border-radius: 50%; filter: blur(60px);
+    background: radial-gradient(closest-side, rgba(180,90,50,.12), transparent); animation: breathe 13s ease-in-out -4s infinite alternate; }
+  @keyframes breathe { 0% { opacity: .6; transform: scale(.95); } 100% { opacity: 1; transform: scale(1.08) translateX(-2vw); } }
+
+  /* Liquid Glass: the colour fields behind the glass slowly flow */
+  [data-theme="glass"] .sky { display: block; }
+  [data-theme="glass"] .sky i { width: 55vw; height: 55vh; border-radius: 50%; filter: blur(50px); opacity: .7; }
+  [data-theme="glass"] .sky i:nth-child(1) { left: -10vw; top: -15vh; background: radial-gradient(closest-side, rgba(255,120,170,.55), transparent); animation: glow-drift 27s ease-in-out infinite alternate; }
+  [data-theme="glass"] .sky i:nth-child(2) { right: -10vw; top: -10vh; background: radial-gradient(closest-side, rgba(90,160,255,.55), transparent); animation: glow-drift 33s ease-in-out -8s infinite alternate-reverse; }
+  [data-theme="glass"] .sky i:nth-child(3) { right: 5vw; bottom: -20vh; background: radial-gradient(closest-side, rgba(255,190,90,.5), transparent); animation: glow-drift 30s ease-in-out -4s infinite alternate; }
+  [data-theme="glass"] .sky i:nth-child(4) { left: -10vw; bottom: -15vh; background: radial-gradient(closest-side, rgba(120,230,200,.45), transparent); animation: glow-drift 36s ease-in-out -12s infinite alternate-reverse; }
+
+  /* ---- the window's own title bar (in the Sable window; hidden in a browser tab) ---- */
+  .winctl { display: none; }
+  .in-app .winctl { display: flex; align-self: stretch; margin: 0 -16px 0 4px; }
+  .winctl button { width: 46px; height: 100%; border: 0; background: transparent; color: var(--fg); display: grid;
+                   place-items: center; cursor: default; transition: background .12s; }
+  .winctl button:hover { background: var(--surface-2); }
+  .winctl button:active { opacity: .8; }
+  .winctl button.close:hover { background: #c42b1c; color: #fff; }
+  .winctl svg { width: 10px; height: 10px; }
+  .winctl .restore, .is-max .winctl .maximize { display: none; }
+  .is-max .winctl .restore { display: block; }
+  .edge { position: fixed; z-index: 100; display: none; }
+  .in-app:not(.is-max) .edge { display: block; }
+  .edge.n, .edge.s { left: 8px; right: 8px; height: 5px; cursor: ns-resize; }
+  .edge.e, .edge.w { top: 8px; bottom: 8px; width: 5px; cursor: ew-resize; }
+  .edge.n { top: 0; } .edge.s { bottom: 0; } .edge.e { right: 0; } .edge.w { left: 0; }
+  .edge.ne, .edge.nw, .edge.se, .edge.sw { width: 8px; height: 8px; }
+  .edge.ne { top: 0; right: 0; cursor: nesw-resize; } .edge.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+  .edge.nw { top: 0; left: 0; cursor: nwse-resize; } .edge.se { bottom: 0; right: 0; cursor: nwse-resize; }
 </style>
 </head>
 <body>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <header id="header">
   <div class="brand">
     <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="lbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b2421"/><stop offset="1" stop-color="#0c0a09"/></linearGradient><linearGradient id="lck" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3fd9b0"/><stop offset="1" stop-color="#9cf7df"/></linearGradient><linearGradient id="lnb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e2b6"/><stop offset="1" stop-color="#c8913f"/></linearGradient></defs><rect width="256" height="256" rx="58" fill="url(#lbg)"/><path d="M54 142 L94 182 L142 130" fill="none" stroke="url(#lck)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(152 120) rotate(45)"><path d="M0 0 C5 -12 22 -28 22 -46 L22 -70 Q22 -76 16 -76 L-16 -76 Q-22 -76 -22 -70 L-22 -46 C-22 -28 -5 -12 0 0 Z" fill="url(#lnb)"/><path d="M0 -6 L0 -38" stroke="#2b2421" stroke-width="3.5" stroke-linecap="round"/><circle cx="0" cy="-44" r="5.5" fill="#2b2421"/></g></svg>
@@ -355,8 +439,15 @@
     <button class="icon-btn" id="openSettings" title="Settings" aria-label="Settings" aria-expanded="false">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
+    <div class="winctl" aria-label="Window">
+      <button data-win="min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M0 5.5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button data-win="max" title="Maximize" aria-label="Maximize"><svg class="maximize" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg><svg class="restore" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x=".5" y="2.5" width="7" height="7" rx="1"/><path d="M2.5 2.5v-1a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1"/></svg></button>
+      <button data-win="close" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9" stroke="currentColor" stroke-width="1"/></svg></button>
+    </div>
   </div>
 </header>
+<div class="edge n" data-edge="n"></div><div class="edge s" data-edge="s"></div><div class="edge e" data-edge="e"></div><div class="edge w" data-edge="w"></div>
+<div class="edge ne" data-edge="ne"></div><div class="edge nw" data-edge="nw"></div><div class="edge se" data-edge="se"></div><div class="edge sw" data-edge="sw"></div>
 
 <main id="main">
   <div class="card update" id="updateBar" hidden>
@@ -475,6 +566,22 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+
+/* The window's own title bar: in the Sable window (window.ipc), the header moves the window, double-click
+   maximizes, and the buttons at the right minimize, maximize and close it; the edges resize it. */
+if (window.ipc) {
+  const win = (m) => window.ipc.postMessage(m);
+  document.documentElement.classList.add("in-app");
+  window.__sableMax = (max) => document.documentElement.classList.toggle("is-max", max);
+  const header = document.getElementById("header");
+  const onBar = (e) => !e.target.closest("button, input, select, textarea, a, [role=tab], .pill");
+  header.addEventListener("mousedown", (e) => { if (e.button === 0 && e.detail === 1 && onBar(e)) win("drag"); });
+  header.addEventListener("dblclick", (e) => { if (onBar(e)) win("max"); });
+  document.querySelectorAll("[data-win]").forEach((b) => (b.onclick = () => win(b.dataset.win)));
+  document.querySelectorAll("[data-edge]").forEach((d) => d.addEventListener("mousedown", (e) => {
+    if (e.button === 0) { e.preventDefault(); win("resize:" + d.dataset.edge); }
+  }));
+}
 const DESC = {
   humanizer_writer: "The default. Rewrites in the SFT writer's casual voice: by far the least likely to be flagged, but rephrases more loosely.",
   humanizer_evo: "Keeps the meaning closest, with clean grammar, but is flagged more often.",
@@ -528,7 +635,6 @@ const tabs = segmented($("tabs"), (t) => {
   const from = reduceMotion.matches ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * 18}px)` };
   $("tab-" + t).animate([from, { opacity: 1, transform: "none" }], { duration: reduceMotion.matches ? 150 : 440, easing: SPRING });
 });
-$("main").addEventListener("scroll", () => $("header").classList.toggle("scrolled", $("main").scrollTop > 2), { passive: true });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
 const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", grammar: "gec_standard", ...SAVED };
