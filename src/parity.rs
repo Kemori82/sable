@@ -193,9 +193,36 @@ pub fn main(args: &[String]) -> Result<()> {
             write(&a(4)?, &out)
         }
         "manifest" => manifest(&a(1)?, &a(2)?, &a(3)?),
+        "generate" => {
+            // {id, prompt, n?, temperature?, max_new?} rows -> {id, outputs: [...]}; CHAIN is a comma-separated list
+            // of adapters, or "none" (the base model as it is; SABLE_LLM_FILE picks another GGUF)
+            let chain_arg = a(1)?;
+            let mut llm = Llm::load(&|m| eprintln!("{m}"))?;
+            let chain: Vec<&str> = if chain_arg == "none" { vec![] } else { chain_arg.split(',').collect() };
+            llm.use_chain(&chain, &|_| {})?;
+            let stop = AtomicBool::new(false);
+            let rs = rows(&a(2)?)?;
+            let t0 = Instant::now();
+            let mut out = vec![];
+            for (k, r) in rs.iter().enumerate() {
+                let n = r["n"].as_u64().unwrap_or(1).clamp(1, 8) as usize;
+                let temp = r["temperature"].as_f64().unwrap_or(0.7) as f32;
+                let max = r["max_new"].as_u64().unwrap_or(200) as usize;
+                let chat = Llm::chat(&st(r, "prompt"));
+                let o = llm.generate(&vec![chat; n], &vec![max; n], temp, &stop, None)?;
+                out.push(json!({"id": r["id"], "outputs": o}));
+                if k % 50 == 49 {
+                    eprintln!("{} of {} ({:.0}s)", k + 1, rs.len(), t0.elapsed().as_secs_f64());
+                }
+            }
+            eprintln!("generate: {} prompts in {:.1}s", out.len(), t0.elapsed().as_secs_f64());
+            write(&a(3)?, &out)
+        }
         "correct" => {
-            // {original, humanized, type} rows, corrected with Writer voice repairs; TUNED = gec-tuned + safety check
+            // {original, humanized, type} rows, corrected with Writer voice repairs; TUNED = gec-tuned + safety check;
+            // a 4th argument "repair" also fixes sentences in place with the repair model
             let tuned = a(1)? == "tuned";
+            let use_repair = args.get(4).map(|s| s == "repair").unwrap_or(false);
             let det = Detector::load()?;
             let cor = crate::corrector::Corrector { nli: Nli::load()?, gec: Gec::load(if tuned { "gec-tuned" } else { "gec" })?, safe_check: tuned };
             let mut llm = Llm::load(&|_| {})?;
@@ -210,6 +237,7 @@ pub fn main(args: &[String]) -> Result<()> {
                 let doc = if kind == "essay" || kind == "abstract" { kind.clone() } else { "other".into() };
                 let mut rewrite = |p: &str| -> Result<Vec<String>> { crate::onnx::timed("rewrite", || {
                     let mut l = llm.borrow_mut();
+                    l.use_chain(&generator::chain("humanizer_writer").unwrap(), &|_| {})?;
                     let max = (l.n_tokens(p) as f64 * 1.8) as usize + 32;
                     let outs = l.generate(&vec![Llm::chat(&generator::humanize_prompt(what, p)); 8], &[max; 8], 0.8, &stop, None)?;
                     let cands: Vec<String> = outs.iter().map(|o| text::py_strip(o).to_string()).filter(|o| !o.is_empty()).collect();
@@ -217,11 +245,18 @@ pub fn main(args: &[String]) -> Result<()> {
                     let ok: Vec<String> = cands.iter().filter(|c| (0.7..=1.5).contains(&(text::n_words(c) as f64 / words))).cloned().collect();
                     Ok(if ok.is_empty() { cands } else { ok })
                 }) };
+                let mut fix_fn = |op: &str, os: &str, marked: &str| -> Result<Vec<String>> { crate::onnx::timed("repair", || {
+                    let mut l = llm.borrow_mut();
+                    l.use_chain(&generator::chain("repair").unwrap(), &|_| {})?;
+                    let max = (l.n_tokens(os) as f64 * 1.8) as usize + 32;
+                    l.generate(&vec![Llm::chat(&generator::repair_prompt(op, os, marked)); 8], &[max; 8], 0.8, &stop, None)
+                }) };
+                let fix: Option<&mut dyn FnMut(&str, &str, &str) -> Result<Vec<String>>> = if use_repair { Some(&mut fix_fn) } else { None };
                 let detect = |t: &[String]| crate::onnx::timed("detect", || det.passage_prob(t));
                 let score_doc = |t: &str| -> Result<f64> { crate::onnx::timed("score_doc", || Ok(det.score(t, &doc)?["score"].as_f64().unwrap_or(0.0))) };
                 let t1 = Instant::now();
                 let mut res = cor.correct(&st(&r, "original"), &st(&r, "humanized"),
-                    crate::corrector::Tools { rewrite: &mut rewrite, detect: &detect, score_doc: &score_doc, progress: &|_| {} })?;
+                    crate::corrector::Tools { rewrite: &mut rewrite, fix, detect: &detect, score_doc: &score_doc, progress: &|_| {} })?;
                 res["seconds"] = json!(t1.elapsed().as_secs_f64());
                 res["id"] = r["id"].clone();
                 out.push(res);

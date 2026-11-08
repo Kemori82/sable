@@ -3,7 +3,8 @@ use crate::paths;
 use serde_json::{json, Map, Value};
 
 pub const DEFAULTS: &[(&str, &str)] = &[("theme", "system"), ("humanizer", "humanizer_writer"), ("writer", "writer_r3"),
-    ("tries", "8"), ("updates", "on"), ("detector", "on"), ("grammar", "gec_standard")];
+    ("tries", "8"), ("updates", "on"), ("detector", "on"), ("grammar", "gec_standard"),
+    ("repair", "repair_model")];
 
 pub fn choices(key: &str) -> &'static [&'static str] {
     match key {
@@ -13,6 +14,7 @@ pub fn choices(key: &str) -> &'static [&'static str] {
         "tries" => &["8", "4", "1"],
         "updates" | "detector" => &["on", "off"],
         "grammar" => &["gec_standard", "gec_tuned"],
+        "repair" => &["repair_rewrite", "repair_model"],
         _ => &[],
     }
 }

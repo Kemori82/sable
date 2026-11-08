@@ -475,7 +475,10 @@ fn correct(c: &mut Conn, req: &Value) -> Result<()> {
     };
     st.stop.store(false, Ordering::Relaxed);
     let r = (|| -> Result<Value> {
-        let tuned = settings::get("grammar") == "gec_tuned" && paths::models().join("gec-tuned").join("decoder.onnx").exists();
+        let tuned = settings::get("grammar") == "gec_tuned"
+            && paths::models().join("gec-tuned").join("decoder_model_merged.onnx").exists();
+        let use_repair = settings::get("repair") == "repair_model"
+            && ["repair_sft", "repair_rl"].iter().all(|a| paths::models().join("qwen").join("adapters").join(format!("{a}.gguf")).exists());
         {
             let mut cor = st.corrector.lock().unwrap();
             let reload_gec = cor.as_ref().map(|c| c.safe_check != tuned).unwrap_or(true);
@@ -496,13 +499,27 @@ fn correct(c: &mut Conn, req: &Value) -> Result<()> {
             if st2.stop.load(Ordering::Relaxed) {
                 return Ok(vec![]);
             }
+            st2.ensure_generator(name)?; // the repair model may have been swapped in for the last fix
             let max = max_new(st2.llm.lock().unwrap().as_ref().unwrap(), passage);
             rewrites(&st2, &generator::humanize_prompt(what, passage), passage, max, 0.8, 8)
+        };
+        let st3 = st.clone();
+        let mut fix_fn = |orig_para: &str, orig_sentence: &str, marked: &str| -> Result<Vec<String>> {
+            if st3.stop.load(Ordering::Relaxed) {
+                return Ok(vec![]);
+            }
+            st3.ensure_generator("repair")?;
+            let mut g = st3.llm.lock().unwrap();
+            let llm = g.as_mut().ok_or(anyhow!("no model loaded"))?;
+            let max = (llm.n_tokens(orig_sentence) as f64 * 1.8) as usize + 32;
+            let chat = Llm::chat(&generator::repair_prompt(orig_para, orig_sentence, marked));
+            llm.generate(&vec![chat; 8], &[max; 8], 0.8, &st3.stop, None)
         };
         let detect = |t: &[String]| det.passage_prob(t);
         let score_doc = |t: &str| -> Result<f64> { Ok(det.score(t, doc_type)?["score"].as_f64().unwrap_or(0.0)) };
         let progress = |m: &str| *st.task.lock().unwrap() = Some(format!("Correcting: {m}…"));
-        let mut r = cor.correct(&original, &humanized, Tools { rewrite: &mut rewrite, detect: &detect, score_doc: &score_doc, progress: &progress })?;
+        let fix: Option<&mut dyn FnMut(&str, &str, &str) -> Result<Vec<String>>> = if use_repair { Some(&mut fix_fn) } else { None };
+        let mut r = cor.correct(&original, &humanized, Tools { rewrite: &mut rewrite, fix, detect: &detect, score_doc: &score_doc, progress: &progress })?;
         let before = det.score(&humanized, doc_type)?["score"].clone();
         let after = det.score(r["text"].as_str().unwrap(), doc_type)?["score"].clone();
         r["scores"] = json!([before, after]);

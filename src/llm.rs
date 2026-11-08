@@ -55,7 +55,11 @@ fn device_name() -> String {
 impl Llm {
     pub fn load(progress: &dyn Fn(&str)) -> Result<Self> {
         let dir = paths::models().join("qwen");
-        let base = BASE_FILES.iter().map(|f| dir.join(f)).find(|p| p.exists()).ok_or(anyhow!("base model missing"))?;
+        // SABLE_LLM_FILE: another GGUF model (development: e.g. a bigger teacher model for training data)
+        let base = match std::env::var("SABLE_LLM_FILE") {
+            Ok(f) => std::path::PathBuf::from(f),
+            Err(_) => BASE_FILES.iter().map(|f| dir.join(f)).find(|p| p.exists()).ok_or(anyhow!("base model missing"))?,
+        };
         unsafe {
             if std::env::var("SABLE_LLAMA_LOG").is_err() {
                 ll::llama_log_set(Some(quiet), std::ptr::null_mut());

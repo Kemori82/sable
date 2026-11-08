@@ -11,6 +11,8 @@ pub fn chain(name: &str) -> Option<Vec<&'static str>> {
         "humanizer_writer" => vec!["sft", "writer_voice"], // trained from the SFT writer on its own passages
         "humanizer_evo" => [humanizer.as_slice(), &["evo1", "evo2", "evo3", "evo4"]].concat(),
         "humanizer_rl" => humanizer,
+        // Correct's meaning repair: Writer voice, then the repair model (supervised, then reinforcement round)
+        "repair" => vec!["sft", "writer_voice", "repair_sft", "repair_rl"],
         _ => return None,
     })
 }
@@ -23,6 +25,7 @@ pub fn label(name: &str) -> Option<&'static str> {
         "humanizer_evo" => "Evolved humanizer",
         "humanizer_rl" => "v2 RL humanizer",
         "humanizer_chain" => "Chain humanizer",
+        "repair" => "repair model",
         _ => return None,
     })
 }
@@ -67,4 +70,20 @@ pub fn write_prompt(domain: &str, opening: &str, topic: Option<&str>, instructio
         lines.push("Write only the text itself.".into());
     }
     lines.join("\n\n")
+}
+
+/// The repair model's prompt (as trained, aimodel/repair/teacher_fixes.py PROMPT): fix the sentence in [[ ]] of the
+/// rewrite so it says what the original sentence says.
+pub fn repair_prompt(orig_passage: &str, original: &str, rewrite_marked: &str) -> String {
+    format!("A rewrite of a passage lost or changed some of the original's meaning. Fix one sentence of the rewrite.
+
+ORIGINAL PASSAGE: {orig_passage}
+
+ORIGINAL SENTENCE (what the fixed sentence must say): {original}
+
+REWRITE (the sentence to fix is in [[double brackets]]): {rewrite_marked}
+
+Write only the fixed sentence. It must say everything the original sentence says, with every fact, name, number and
+detail right, and nothing it doesn't say. Keep the rewrite's plain, casual wording and its style: change as few
+words as you can, and use a simple word where the original uses a fancy one.")
 }

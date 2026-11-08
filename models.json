@@ -43,42 +43,6 @@
       "size": 562
     },
     {
-      "asset": "gec--config.json",
-      "path": "gec/config.json",
-      "sha256": "139abcc83ddb86a3cdfd6a4b855e00b9f655d26ab64b51d8980bf091536eedc3",
-      "size": 1652
-    },
-    {
-      "asset": "gec--decoder_model_merged.onnx",
-      "path": "gec/decoder_model_merged.onnx",
-      "sha256": "9314cee3ec977b25f9c872398d0d3dfd316cb221c6b09f59984a4a12fbd8fba8",
-      "size": 116539501
-    },
-    {
-      "asset": "gec--encoder_model.onnx",
-      "path": "gec/encoder_model.onnx",
-      "sha256": "2e6defe1d3e2692cf566ff121e305e27b2deb2283e2d95213d63803652a8a2fd",
-      "size": 70763825
-    },
-    {
-      "asset": "gec--generation_config.json",
-      "path": "gec/generation_config.json",
-      "sha256": "50d9dd03ee7c5563283dff0babbbb6a58da6a7d344c1ff49cc3cf350e033367e",
-      "size": 171
-    },
-    {
-      "asset": "gec--tokenizer.json",
-      "path": "gec/tokenizer.json",
-      "sha256": "5a1e6d0393c72d2c17483eddef327a7090c9a51989f8f2ebc52d5322dcbcacac",
-      "size": 2422434
-    },
-    {
-      "asset": "gec--tokenizer_config.json",
-      "path": "gec/tokenizer_config.json",
-      "sha256": "fdd97fb0692db7984af52fb70629f5dd09967f3176d41c8aa43255a3f5fc2fc4",
-      "size": 2667
-    },
-    {
       "asset": "gec-tuned--config.json",
       "path": "gec-tuned/config.json",
       "sha256": "37ec4561240d0da9efe5121222a8d4079f09c42f9cba142965b6a10ae187298e",
@@ -113,6 +77,42 @@
       "path": "gec-tuned/tokenizer_config.json",
       "sha256": "bb66e896a8081a956c2547b2dbc8c771bc75af905e66c06e9ad0f74e327954b3",
       "size": 2547
+    },
+    {
+      "asset": "gec--config.json",
+      "path": "gec/config.json",
+      "sha256": "139abcc83ddb86a3cdfd6a4b855e00b9f655d26ab64b51d8980bf091536eedc3",
+      "size": 1652
+    },
+    {
+      "asset": "gec--decoder_model_merged.onnx",
+      "path": "gec/decoder_model_merged.onnx",
+      "sha256": "9314cee3ec977b25f9c872398d0d3dfd316cb221c6b09f59984a4a12fbd8fba8",
+      "size": 116539501
+    },
+    {
+      "asset": "gec--encoder_model.onnx",
+      "path": "gec/encoder_model.onnx",
+      "sha256": "2e6defe1d3e2692cf566ff121e305e27b2deb2283e2d95213d63803652a8a2fd",
+      "size": 70763825
+    },
+    {
+      "asset": "gec--generation_config.json",
+      "path": "gec/generation_config.json",
+      "sha256": "50d9dd03ee7c5563283dff0babbbb6a58da6a7d344c1ff49cc3cf350e033367e",
+      "size": 171
+    },
+    {
+      "asset": "gec--tokenizer.json",
+      "path": "gec/tokenizer.json",
+      "sha256": "5a1e6d0393c72d2c17483eddef327a7090c9a51989f8f2ebc52d5322dcbcacac",
+      "size": 2422434
+    },
+    {
+      "asset": "gec--tokenizer_config.json",
+      "path": "gec/tokenizer_config.json",
+      "sha256": "fdd97fb0692db7984af52fb70629f5dd09967f3176d41c8aa43255a3f5fc2fc4",
+      "size": 2667
     },
     {
       "asset": "nli--config.json",
@@ -185,6 +185,18 @@
       "path": "qwen/adapters/r3.gguf",
       "sha256": "e1fced6d155b0c1fd19b8cb9cc0c1ae5f3bf004a58403d8416616af226f4a2dc",
       "size": 36956448
+    },
+    {
+      "path": "qwen/adapters/repair_rl.gguf",
+      "size": 36956800,
+      "sha256": "c345d4b7614bcb7684bcae0d8cdd36ae2d2c5093077c237a2601d743358d43b7",
+      "asset": "qwen--adapters--repair_rl.gguf"
+    },
+    {
+      "path": "qwen/adapters/repair_sft.gguf",
+      "size": 36956800,
+      "sha256": "0125d73ca9da78701655f75bfe034ff5596c29c82f8dcd436df09d4a51977733",
+      "asset": "qwen--adapters--repair_sft.gguf"
     },
     {
       "asset": "qwen--adapters--rl.gguf",

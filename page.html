@@ -547,7 +547,11 @@
     <span class="t" style="margin-top:12px">Correct: grammar fixer</span>
     <div class="seg" id="sGrammar"><i class="thumb"></i>
       <button data-v="gec_standard" aria-pressed="true">Standard</button><button data-v="gec_tuned" aria-pressed="false">Tuned</button></div>
-    <p class="desc" id="dGrammar"></p></div>
+    <p class="desc" id="dGrammar"></p>
+    <span class="t" style="margin-top:12px">Correct: meaning repair</span>
+    <div class="seg" id="sRepair"><i class="thumb"></i>
+      <button data-v="repair_model" aria-pressed="true">Repair model</button><button data-v="repair_rewrite" aria-pressed="false">Rewrite</button></div>
+    <p class="desc" id="dRepair"></p></div>
   <div class="group"><span class="t">Writer</span>
     <div class="seg" id="sWriter"><i class="thumb"></i>
       <button data-v="writer_r3" aria-pressed="true">Round 3</button><button data-v="writer_sft" aria-pressed="false">SFT only</button></div>
@@ -592,6 +596,8 @@ const DESC = {
   tries_8: "The default. Writes 8 rewrites of each passage and keeps the one the detector finds least AI-like. Slower, but far less likely to be flagged.",
   tries_4: "Writes 4 rewrites of each passage and keeps the least AI-like. About twice as fast as 8.",
   tries_1: "One rewrite per passage, shown as it is written. Fastest, but flagged much more often.",
+  repair_model: "The default. Sable's repair model fixes a sentence that changed the meaning in place: it puts back lost or wrong details and keeps the casual wording, and Correct keeps whichever fix reads least like AI. On 150 test passages it left 23% fewer meaning problems than Rewrite, without more texts flagged. About twice as slow.",
+  repair_rewrite: "Faster: a sentence that changed the meaning is replaced by the original sentence, humanized again on its own.",
   gec_standard: "The default. The original small grammar model (Unbabel), used by Correct as it comes.",
   gec_tuned: "Trained further for Sable on realistic learner errors, plus a check that undoes changes that aren't grammar fixes (dropping \"it\", \"of\" or \"a\", changing a word into a different one). Fixes more real mistakes and leaves correct sentences alone more often.",
 };
@@ -637,10 +643,10 @@ const tabs = segmented($("tabs"), (t) => {
 });
 
 /* Settings: saved by the app (settings.json), so they survive restarts */
-const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", grammar: "gec_standard", ...SAVED };
+const saved = { theme: "system", humanizer: "humanizer_writer", writer: "writer_r3", tries: "8", updates: "on", detector: "on", grammar: "gec_standard", repair: "repair_model", ...SAVED };
 const save = (key, v) => { saved[key] = v; fetch("/api/settings", { method: "POST", body: JSON.stringify({ [key]: v }) }).catch(() => {}); };
 const settings = {};
-for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"], ["grammar", "sGrammar"]]) {
+for (const [key, id] of [["humanizer", "sHumanizer"], ["writer", "sWriter"], ["tries", "sTries"], ["grammar", "sGrammar"], ["repair", "sRepair"]]) {
   const desc = $("d" + id.slice(1)), d = (v) => DESC[key === "tries" ? "tries_" + v : v];
   settings[key] = segmented($(id), (v) => { save(key, v); desc.textContent = d(v); detectorDesc(); });
   settings[key].value = saved[key];
@@ -886,6 +892,7 @@ async function correct(c, req, btn) {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || r.statusText);
     const n = d.notes, tags = ["Corrected", `AI-like ${pct(d.scores[0])} → ${pct(d.scores[1])}`];
+    if (n.repaired > 0) tags.push(`${n.repaired} sentence${n.repaired === 1 ? "" : "s"} repaired`);
     if (n.restored > 0) tags.push(`${n.restored} point${n.restored === 1 ? "" : "s"} put back`);
     if (n.removed > 0) tags.push(`${n.removed} wrong or made-up sentence${n.removed === 1 ? "" : "s"} fixed`);
     if (n.grammar) tags.push(`${n.grammar} grammar fix${n.grammar === 1 ? "" : "es"}`);

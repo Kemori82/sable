@@ -1,6 +1,6 @@
 [package]
 name = "sable"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Sable: AI-text detector, humanizer and writer that runs on your own computer"
 publish = false

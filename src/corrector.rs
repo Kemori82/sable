@@ -23,6 +23,17 @@ const CONTRA: f32 = 0.5;
 const MADE_UP: f32 = 0.05;
 const LINE: f64 = 0.35;
 
+/// One sentence, no 3-word run repeated (the repair test's "clean single sentence").
+fn tidy(x: &str) -> bool {
+    let w: Vec<String> = text::py_split(x).iter().map(|s| s.to_lowercase()).collect();
+    let grams: Vec<&[String]> = w.windows(3).collect();
+    let uniq: std::collections::HashSet<&[String]> = grams.iter().copied().collect();
+    let t = x.trim();
+    let ends = t.char_indices().filter(|(i, ch)| ".!?".contains(*ch)
+        && t[i + ch.len_utf8()..].chars().next().map(|n| n.is_whitespace()).unwrap_or(true)).count();
+    ends <= 1 && uniq.len() == grams.len()
+}
+
 pub struct Corrector {
     pub nli: Nli,
     pub gec: Gec,
@@ -42,9 +53,11 @@ impl Check {
     }
 }
 
-/// The callbacks the corrector uses: the humanizer and the detector.
+/// The callbacks the corrector uses: the humanizer, the repair model (if on) and the detector.
 pub struct Tools<'a> {
     pub rewrite: &'a mut dyn FnMut(&str) -> Result<Vec<String>>,
+    /// (original paragraph, original sentence, humanized paragraph with the sentence to fix in [[ ]]) -> candidate fixes
+    pub fix: Option<&'a mut dyn FnMut(&str, &str, &str) -> Result<Vec<String>>>,
     pub detect: &'a dyn Fn(&[String]) -> Result<Vec<f64>>,
     pub score_doc: &'a dyn Fn(&str) -> Result<f64>,
     pub progress: &'a dyn Fn(&str),
@@ -104,10 +117,111 @@ impl Corrector {
         Ok(Check { orig: o, hum: h, missing, wrong })
     }
 
-    fn repair(&self, o: &str, h: &str, c: &Check, rewrite: &mut dyn FnMut(&str) -> Result<Vec<String>>,
-              det: &Cached) -> Result<(String, usize, usize)> {
+    /// For each humanized sentence, the original sentence it came from: the one that supports it best, or that it
+    /// supports best (NLI, both ways), plus how many content words they share.
+    fn align(&self, orig: &[String], hum: &[String]) -> Result<Vec<usize>> {
+        let (mut prem, mut hyp) = (vec![], vec![]);
+        for h in hum {
+            for o in orig {
+                prem.push(o.clone());
+                hyp.push(h.clone());
+                prem.push(h.clone());
+                hyp.push(o.clone());
+            }
+        }
+        let p = self.nli.probs(&prem, &hyp)?;
+        let words = |s: &str| -> std::collections::HashSet<String> {
+            text::py_split(s).iter().map(|w| text::bare(w)).filter(|w| w.len() > 3).collect()
+        };
+        Ok((0..hum.len()).map(|j| {
+            let wh = words(&hum[j]);
+            let score = |i: usize| {
+                let k = 2 * (j * orig.len() + i);
+                let wo = words(&orig[i]);
+                let overlap = wh.intersection(&wo).count() as f32 / wh.union(&wo).count().max(1) as f32;
+                p[k][self.nli.ent].max(p[k + 1][self.nli.ent]) + 0.5 * overlap
+            };
+            (0..orig.len()).max_by(|&a, &b| score(a).partial_cmp(&score(b)).unwrap()).unwrap_or(0)
+        }).collect())
+    }
+
+    /// Fix sentences in place (the repair model's fixes and Writer voice's rewrites of the original sentence, best
+    /// first): each humanized sentence that is wrong, or that came from an original sentence the paragraph lost.
+    /// A fix is kept only if the original sentence and the fix support each other, the paragraph's problems go
+    /// down and it stays under the detector limit; a clean single sentence is preferred.
+    fn fix_in_place(&self, o: &str, c: &Check, fix: &mut dyn FnMut(&str, &str, &str) -> Result<Vec<String>>,
+                    rewrite: &mut dyn FnMut(&str) -> Result<Vec<String>>, det: &Cached, limit: f64)
+                    -> Result<(Vec<String>, usize)> {
         let (mut s, orig, mut probs) = (c.hum.clone(), &c.orig, c.problems());
+        if orig.is_empty() || s.is_empty() {
+            return Ok((s, 0));
+        }
+        let align = self.align(orig, &s)?;
+        let mut done = std::collections::HashSet::new();
+        let mut repaired = 0;
+        for j in 0..s.len() {
+            let i = align[j];
+            if !(c.wrong.contains(&j) || c.missing.contains(&i)) || !done.insert(i) {
+                continue;
+            }
+            let marked: Vec<String> = s.iter().enumerate().map(|(k, x)| if k == j { format!("[[{x}]]") } else { x.clone() }).collect();
+            let mut cands: Vec<String> = fix(o, &orig[i], &marked.join(" "))?;
+            cands.extend(rewrite(&orig[i])?);
+            let mut seen = std::collections::HashSet::new();
+            let cands: Vec<String> = cands.into_iter()
+                .map(|x| text::py_strip(&x.replace("[[", "").replace("]]", "")).trim_matches('"').to_string())
+                .filter(|x| !x.is_empty() && *x != s[j] && seen.insert(x.clone())).collect();
+            if cands.is_empty() {
+                continue;
+            }
+            let n = cands.len();
+            let fwd = self.nli.probs(&vec![orig[i].clone(); n], &cands)?;
+            let back = self.nli.probs(&cands, &vec![orig[i].clone(); n])?;
+            let trials: Vec<Vec<String>> = cands.iter().map(|x| {
+                let mut t = s.clone();
+                t[j] = x.clone();
+                t
+            }).collect();
+            let ai = det.detect(&trials.iter().map(|t| t.join(" ")).collect::<Vec<_>>())?;
+            let key = |k: usize| {
+                let ent = fwd[k][self.nli.ent].min(back[k][self.nli.ent]);
+                let con = fwd[k][self.nli.con].max(back[k][self.nli.con]);
+                (ent >= 0.5 && con < 0.5, ai[k] <= limit, tidy(&cands[k]), ent as f64 - 0.5 * (ai[k] - 0.35).max(0.0))
+            };
+            let mut order: Vec<usize> = (0..n).collect();
+            order.sort_by(|a, b| key(*b).partial_cmp(&key(*a)).unwrap());
+            for k in order.into_iter().take(3) {
+                if !key(k).0 || !key(k).1 {
+                    break;
+                }
+                let p = self.check(o, &trials[k].join(" "))?.problems();
+                if p < probs {
+                    s = trials[k].clone();
+                    probs = p;
+                    repaired += 1;
+                    break;
+                }
+            }
+        }
+        Ok((s, repaired))
+    }
+
+    fn repair<'f>(&self, o: &str, h: &str, c: &Check, rewrite: &mut dyn FnMut(&str) -> Result<Vec<String>>,
+              fix: Option<&mut (dyn FnMut(&str, &str, &str) -> Result<Vec<String>> + 'f)>,
+              det: &Cached) -> Result<(String, usize, usize, usize)> {
         let limit = LINE.max(det.one(h)? + 0.05);
+        let mut repaired = 0;
+        let fixed;
+        let c = match fix {
+            Some(f) => {
+                let (s, n) = self.fix_in_place(o, c, f, rewrite, det, limit)?;
+                repaired = n;
+                fixed = self.check(o, &s.join(" "))?;
+                &fixed
+            }
+            None => c,
+        };
+        let (mut s, orig, mut probs) = (c.hum.clone(), &c.orig, c.problems());
         let (mut restored, mut removed) = (0, 0);
         let mut wrong = c.wrong.clone();
         wrong.sort_unstable_by(|a, b| b.cmp(a));
@@ -151,7 +265,7 @@ impl Corrector {
                 }
             }
         }
-        Ok((s.join(" "), restored, removed))
+        Ok((s.join(" "), restored, removed, repaired))
     }
 
     pub fn correct(&self, original: &str, humanized: &str, tools: Tools) -> Result<Value> {
@@ -162,7 +276,8 @@ impl Corrector {
             op = vec![op.join(" ")];
             hp = vec![hp.join(" ")];
         }
-        let (mut restored, mut removed, mut grammar, mut undone) = (0, 0, 0, 0);
+        let (mut restored, mut removed, mut grammar, mut undone, mut repaired) = (0, 0, 0, 0, 0);
+        let mut fix = tools.fix;
         let repeats_cut = text::n_words(humanized) as i64 - text::n_words(&cleaned) as i64;
         let mut out = vec![];
         for (k, (o, h)) in op.iter().zip(&hp).enumerate() {
@@ -170,9 +285,10 @@ impl Corrector {
             let c = self.check(o, h)?;
             let mut h = h.clone();
             if c.problems() > 0 {
-                let (h2, r, m) = self.repair(o, &h, &c, tools.rewrite, &det)?;
+                let (h2, r, m, f) = self.repair(o, &h, &c, tools.rewrite, fix.as_deref_mut(), &det)?;
                 restored += r;
                 removed += m;
+                repaired += f;
                 h = h2;
             }
             out.push(h);
@@ -218,7 +334,7 @@ impl Corrector {
         }
         let text = out.join("\n\n");
         let mut notes = json!({"restored": restored, "removed": removed, "grammar": grammar, "paragraphs_rewritten": 0,
-                               "repeats_cut": repeats_cut});
+                               "repeats_cut": repeats_cut, "repaired": repaired});
         if undone > 0 {
             notes["undone"] = json!(undone);
         }
