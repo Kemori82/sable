@@ -36,6 +36,7 @@ pub struct State {
     gpu: Mutex<()>, // one load / generation / detection at a time
     pub stop: AtomicBool,
     device: Mutex<String>,
+    corrections: std::sync::atomic::AtomicU64, // counts Correct runs, so an idle corrector can be freed
 }
 
 fn set(m: &Mutex<String>, v: &str) {
@@ -526,6 +527,19 @@ fn correct(c: &mut Conn, req: &Value) -> Result<()> {
         Ok(r)
     })();
     *st.task.lock().unwrap() = None;
+    // Correct's meaning checker and grammar fixer (~600 MB of RAM) are freed after 2 minutes without a Correct;
+    // they load again in about a second
+    let n = st.corrections.fetch_add(1, Ordering::Relaxed) + 1;
+    let idle = st.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(120));
+        if idle.corrections.load(Ordering::Relaxed) == n {
+            let _g = idle.gpu.lock().unwrap();
+            if idle.corrections.load(Ordering::Relaxed) == n {
+                *idle.corrector.lock().unwrap() = None;
+            }
+        }
+    });
     c.json(r?, 200);
     Ok(())
 }

@@ -67,7 +67,23 @@ impl Llm {
             ll::llama_backend_init();
             progress("loading the base model");
             let mut mp = ll::llama_model_default_params();
-            mp.n_gpu_layers = if std::env::var("SABLE_CPU").is_ok() { 0 } else { 999 };
+            let gpu = std::env::var("SABLE_CPU").is_err() && gpu_name().is_some();
+            mp.n_gpu_layers = if gpu { 999 } else { 0 };
+            // on the graphics card the weights are read straight into its memory, so no copy of the 3 GB file stays
+            // mapped in RAM; on the CPU mapping the file is what keeps it in memory, so keep it there
+            mp.load_mode = if gpu { ll::LLAMA_LOAD_MODE_NONE } else { ll::LLAMA_LOAD_MODE_MMAP };
+            // llama.cpp keeps the word table (token embeddings, ~470 MB) in RAM even when everything else is on the
+            // graphics card; put it on the card too (SABLE_EMBED_RAM keeps it in RAM)
+            let pattern = CString::new("token_embd\\.weight")?;
+            let mut overrides = vec![];
+            if gpu && std::env::var("SABLE_EMBED_RAM").is_err() {
+                if let Some(dev) = (0..ll::ggml_backend_dev_count()).map(|i| ll::ggml_backend_dev_get(i))
+                    .find(|d| ll::ggml_backend_dev_type(*d) == ll::GGML_BACKEND_DEVICE_TYPE_GPU) {
+                    overrides.push(ll::llama_model_tensor_buft_override { pattern: pattern.as_ptr(), buft: ll::ggml_backend_dev_buffer_type(dev) });
+                    overrides.push(ll::llama_model_tensor_buft_override { pattern: std::ptr::null(), buft: std::ptr::null_mut() });
+                    mp.tensor_buft_overrides = overrides.as_ptr();
+                }
+            }
             let path = CString::new(base.to_string_lossy().as_bytes())?;
             let model = ll::llama_model_load_from_file(path.as_ptr(), mp);
             if model.is_null() {
