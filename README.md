@@ -6,7 +6,7 @@ you paste is sent anywhere.
 
 ## Install
 
-1. Download **Sable-1.1.0.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
+1. Download **Sable-1.2.0.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
    and unzip it anywhere (for example into `Documents\Sable`).
 2. Double-click **Sable.exe**.
 
