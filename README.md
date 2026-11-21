@@ -6,12 +6,13 @@ you paste is sent anywhere.
 
 ## Install
 
-1. Download **Sable-1.2.3.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
+1. Download **Sable-1.3.0.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
    and unzip it anywhere (for example into `Documents\Sable`).
 2. Double-click **Sable.exe**.
 
 The first start downloads the detector models (about 0.8 GB, once), checking each file against its SHA-256, with
-progress in the window, and adds a Desktop shortcut. If the download is interrupted, start Sable again and it
+progress in the window, and adds a Desktop shortcut. Presto (about 0.9 GB more) then downloads in the background
+while Sable works with Sonata, and takes over once it's there. If the download is interrupted, start Sable again and it
 carries on where it stopped. After that, Sable opens in under a second.
 
 Needs Windows 10 or 11 and about 1.5 GB of disk space. Nothing else has to be installed: the files in the zip are
@@ -38,11 +39,14 @@ Choose the kind of writing (Essay, Abstract or Other) before detecting; each has
 AI-likeness: each sentence shaded by how AI-like it reads on its own, the words the detector reacted to most
 underlined, and how much each sentence moves its passage's score. Point at a sentence for its numbers.
 
-## Two detectors
+## Three detectors
 
 Settings → Detector chooses between them; switching takes a few seconds.
 
-- **Sonata** (the default, new in 1.1.0): trained on about twice as much text, including AI writing that was
+- **Presto** (the default, new in 1.3.0): a larger model (DeBERTa-v3-large) taught by a much bigger detector, a
+  Qwen3-32B fine-tuned on the same data. It catches about twice as much humanized AI text as Sonata and flags far
+  fewer human essays (see below).
+- **Sonata** (new in 1.1.0): trained on about twice as much text as Suite Lite, including AI writing that was
   reworded to avoid detection, and text from more recent models. It catches far more reworded AI text.
 - **Suite Lite**: the detector of Sable 1.0. It flags slightly fewer human essays, but misses most reworded AI text.
 
@@ -60,6 +64,23 @@ Settings → Detector chooses between them; switching takes a few seconds.
 5. **Out-of-scope check.** The text's position in the model's internal representation is compared with 20,000
    training documents. If it is further from its 10 nearest neighbours than 99% of validation documents are, Sable
    says the score is less reliable.
+
+## How Presto was trained
+
+A Qwen3-32B detector was fine-tuned on Sonata's training data first. It is far more accurate, but needs about 18 GB
+of graphics memory, so it can't run in Sable. It then scored all 516,715 training passages, and Presto
+(DeBERTa-v3-large, 435M parameters) was trained on Sonata's data with half of each passage's target from its label
+and half from the 32B's score (knowledge distillation), on three RTX 3060s.
+
+On held-out data (the same passages for all four):
+
+| | Qwen3-32B | **Presto** | Sonata | Suite Lite |
+|---|---|---|---|---|
+| Held-out passages, AUROC (40,000) | 0.979 | **0.967** | 0.952 | 0.949 |
+| Held-out AI texts caught, 1% of human texts flagged | 84.7% | **82.6%** | 71.3% | 73.1% |
+| AI test texts caught after Falsetto / Motif / Evolved / Writer voice | 41–66% | **30–44%** | 16–27% | 5–15% |
+
+Human student essays (PERSUADE) wrongly flagged: 0.07% with Presto, 1.05% with Sonata.
 
 ## How Sonata was trained
 
