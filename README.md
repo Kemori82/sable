@@ -78,7 +78,7 @@ On held-out data (the same passages for all four):
 |---|---|---|---|---|
 | Held-out passages, AUROC (40,000) | 0.979 | **0.967** | 0.952 | 0.949 |
 | Held-out AI texts caught, 1% of human texts flagged | 84.7% | **82.6%** | 71.3% | 73.1% |
-| AI test texts caught after Falsetto / Motif / Evolved / Writer voice | 41–66% | **30–44%** | 16–27% | 5–15% |
+| AI test texts caught after Humanizer | 41–66% | **30–44%** | 16–27% | 5–15% |
 
 Human student essays (PERSUADE) wrongly flagged: 0.07% with Presto, 1.05% with Sonata.
 
