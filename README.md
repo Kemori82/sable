@@ -6,7 +6,7 @@ you paste is sent anywhere.
 
 ## Install
 
-1. Download **Sable-1.4.0.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
+1. Download **Sable-1.4.1.zip** from this repo's [latest release](https://github.com/Kemori82/sable/releases/latest)
    and unzip it anywhere (for example into `Documents\Sable`).
 2. Double-click **Sable.exe**.
 
@@ -44,7 +44,7 @@ underlined, and how much each sentence moves its passage's score. Point at a sen
 Settings → Detector chooses between them; switching takes a few seconds.
 
 - **Presto** (the default, new in 1.3.0): a larger model (DeBERTa-v3-large) taught by a much bigger detector, a
-  Qwen3-32B fine-tuned on the same data. It catches about twice as much humanized AI text as Sonata and flags far
+  Qwen3-32B fine-tuned on the same data. It catches about twice as much reworded AI text as Sonata and flags far
   fewer human essays (see below).
 - **Sonata** (new in 1.1.0): trained on about twice as much text as Suite Lite, including AI writing that was
   reworded to avoid detection, and text from more recent models. It catches far more reworded AI text.
@@ -78,7 +78,6 @@ On held-out data (the same passages for all four):
 |---|---|---|---|---|
 | Held-out passages, AUROC (40,000) | 0.979 | **0.967** | 0.952 | 0.949 |
 | Held-out AI texts caught, 1% of human texts flagged | 84.7% | **82.6%** | 71.3% | 73.1% |
-| AI test texts caught after Humanizer | 41–66% | **30–44%** | 16–27% | 5–15% |
 
 Human student essays (PERSUADE) wrongly flagged: 0.07% with Presto, 1.05% with Sonata.
 
